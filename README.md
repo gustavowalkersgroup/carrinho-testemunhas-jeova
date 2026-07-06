@@ -6,6 +6,8 @@ Aplicativo desktop gratuito para gerar a escala mensal do carrinho de literatura
 
 Baixe o instalador `EscalaCarrinho_Setup.exe` na aba [Releases](../../releases) e execute. Não precisa de admin, não precisa instalar Python — tudo já vem empacotado. Na primeira abertura, um assistente guia a configuração inicial (nome da congregação, idioma, horários do carrinho, saídas de campo).
 
+Veja o [Manual de Uso](Manual%20de%20Uso%20-%20Escala%20do%20Carrinho.docx) (ou o [PDF](Manual%20de%20Uso%20-%20Escala%20do%20Carrinho.pdf)) para um passo a passo com telas de todas as funções.
+
 ## Principais recursos
 
 - Sorteio automático com rodízio (prioriza quem está há mais tempo sem servir)

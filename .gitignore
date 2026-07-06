@@ -16,7 +16,3 @@ scripts/seed_dados_reais.py
 # copia de trabalho local do exe (rodada direto da pasta) e locks de sessao
 /EscalaCarrinho.exe
 .claude/scheduled_tasks.lock
-
-# manual com screenshots reais da congregacao (nomes de pessoas) -- nunca publicar
-Manual de Uso - Escala do Carrinho.docx
-Manual de Uso - Escala do Carrinho.pdf
