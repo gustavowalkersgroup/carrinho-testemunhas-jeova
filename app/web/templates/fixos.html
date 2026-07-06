@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ t('fixos.titulo') }}{% endblock %}
+{% block content %}
+<h1>{{ t('fixos.titulo') }}</h1>
+{% if erro %}<div class="painel-erro">{{ erro }}</div>{% endif %}
+<table>
+    <tr><th>{{ t('fixos.col_horario') }}</th><th>{{ t('escala.col_pessoa1') }}</th><th>{{ t('escala.col_pessoa2') }}</th><th>{{ t('comum.vigencia') }}</th><th></th></tr>
+    {% for f in linhas %}
+    <tr>
+        <td data-label="{{ t('fixos.col_horario') }}">{{ f.slot_label }}</td>
+        <td data-label="{{ t('escala.col_pessoa1') }}">{{ f.pessoa_1 }}</td>
+        <td data-label="{{ t('escala.col_pessoa2') }}">{{ f.pessoa_2 }}</td>
+        <td data-label="{{ t('comum.vigencia') }}">{{ f.vigencia_inicio }} {% if f.vigencia_fim %}{{ t('comum.ate') }} {{ f.vigencia_fim }}{% endif %}</td>
+        <td>
+            {% if f.ativo %}
+            <form class="inline" method="post" action="/fixos/{{ f.fixo_id }}/encerrar" onsubmit="return confirm('{{ t('fixos.confirmar_encerrar') }}');">
+                <button class="perigo" type="submit">{{ t('comum.encerrar') }}</button>
+            </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h2>{{ t('fixos.nova_titulo') }}</h2>
+<p><em>{{ t('fixos.ajuda') }}</em></p>
+<form class="form-box" method="post" action="/fixos">
+    <label>{{ t('fixos.col_horario') }}
+        <select name="slot_id" required>
+            {% for s in slots %}
+            <option value="{{ s.slot_id }}">{{ slot_label(s) }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>{{ t('escala.col_pessoa1') }}
+        <select name="pessoa_id_1" required>
+            {% for p in pessoas %}
+            <option value="{{ p.id }}">{{ p.nome }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>{{ t('fixos.pessoa2_ajuda') }}
+        <select name="pessoa_id_2">
+            <option value="">{{ t('fixos.nao_fixar') }}</option>
+            {% for p in pessoas %}
+            <option value="{{ p.id }}">{{ p.nome }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>{{ t('comum.vigente_a_partir_de') }}<input type="date" name="vigencia_inicio" required></label>
+    <p><button type="submit">{{ t('comum.cadastrar') }}</button></p>
+</form>
+{% endblock %}

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="{{ idioma_atual }}" dir="{{ 'rtl' if rtl else 'ltr' }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ t('app.titulo') }}{% endblock %}</title>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <header class="topbar">
+        <strong>{{ nome_congregacao or t('app.nome_padrao') }}</strong>
+        <nav>
+            <a href="/escala"><span class="nav-icone">📅</span> {{ t('nav.escala') }}</a>
+            <a href="/pessoas"><span class="nav-icone">👤</span> {{ t('nav.pessoas') }}</a>
+            <a href="/disponibilidade"><span class="nav-icone">✔️</span> {{ t('nav.disponibilidade') }}</a>
+            <a href="/fixos"><span class="nav-icone">📌</span> {{ t('nav.fixos') }}</a>
+            <a href="/dirigentes"><span class="nav-icone">🧭</span> {{ t('nav.dirigentes') }}</a>
+            <a href="/bloqueios"><span class="nav-icone">🚫</span> {{ t('nav.bloqueios') }}</a>
+            <a href="/configuracoes"><span class="nav-icone">⚙️</span> {{ t('nav.configuracoes') }}</a>
+        </nav>
+    </header>
+    <main class="conteudo">
+        {% if mensagem %}<div class="flash">{{ mensagem }}</div>{% endif %}
+        {% block content %}{% endblock %}
+    </main>
+    <script>
+        // Destaca no menu a página que está aberta agora.
+        (function () {
+            var caminho = window.location.pathname;
+            var links = document.querySelectorAll(".topbar nav a");
+            var melhor = null, melhorTam = -1;
+            links.forEach(function (a) {
+                var href = a.getAttribute("href");
+                if (caminho === href || (href !== "/" && caminho.indexOf(href) === 0)) {
+                    if (href.length > melhorTam) { melhor = a; melhorTam = href.length; }
+                }
+            });
+            if (!melhor && (caminho === "/" )) {
+                melhor = document.querySelector('.topbar nav a[href="/escala"]');
+            }
+            if (melhor) { melhor.setAttribute("aria-current", "page"); }
+        })();
+    </script>
+</body>
+</html>

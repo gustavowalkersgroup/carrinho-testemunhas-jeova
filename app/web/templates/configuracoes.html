@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ t('configuracoes.titulo') }}{% endblock %}
+{% block content %}
+<h1>{{ t('configuracoes.titulo') }}</h1>
+<span class="subtitulo">{{ t('configuracoes.subtitulo') }}</span>
+
+{% if salvo %}<div class="flash">{{ t('configuracoes.salvo_sucesso') }}</div>{% endif %}
+
+<h2>{{ t('configuracoes.geral_titulo') }}</h2>
+<form class="form-box" method="post" action="/configuracoes">
+    <label>{{ t('configuracoes.nome_congregacao_label') }}
+        <input type="text" name="nome_congregacao" value="{{ nome_congregacao }}"
+            placeholder="{{ t('configuracoes.nome_congregacao_placeholder') }}" required>
+    </label>
+    <label>{{ t('configuracoes.idioma_label') }}
+        <select name="idioma">
+            {% for codigo, nome in idiomas_disponiveis.items() %}
+            <option value="{{ codigo }}" {% if codigo == idioma_atual %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <p><button type="submit">{{ t('configuracoes.salvar') }}</button></p>
+</form>
+
+<h2>{{ t('configuracoes.estrutura_titulo') }}</h2>
+<div class="config-links">
+    <a class="card-link" href="/slots">
+        <strong>{{ t('configuracoes.link_slots') }}</strong><br>
+        <small>{{ t('configuracoes.link_slots_desc') }}</small>
+    </a>
+    <a class="card-link" href="/saidas">
+        <strong>{{ t('configuracoes.link_saidas') }}</strong><br>
+        <small>{{ t('configuracoes.link_saidas_desc') }}</small>
+    </a>
+    <a class="card-link" href="/bloqueios">
+        <strong>{{ t('configuracoes.link_bloqueios') }}</strong><br>
+        <small>{{ t('configuracoes.link_bloqueios_desc') }}</small>
+    </a>
+</div>
+
+<h2>{{ t('configuracoes.assistente_titulo') }}</h2>
+<p><em>{{ t('configuracoes.assistente_desc') }}</em></p>
+<p><a class="btn" href="/assistente?passo=1">{{ t('configuracoes.rodar_assistente') }}</a></p>
+{% endblock %}

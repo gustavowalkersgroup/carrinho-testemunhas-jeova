@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ t('disponibilidade.titulo') }}{% endblock %}
+{% block content %}
+<h1>{{ t('disponibilidade.titulo') }}</h1>
+<form method="get" action="/disponibilidade" class="form-box">
+    <label>{{ t('disponibilidade.selecionar_pessoa') }}
+        <select name="pessoa_id" onchange="this.form.submit()">
+            <option value="">{{ t('disponibilidade.selecione') }}</option>
+            {% for p in pessoas %}
+            <option value="{{ p.id }}" {% if pessoa_id == p.id %}selected{% endif %}>{{ p.nome }}</option>
+            {% endfor %}
+        </select>
+    </label>
+</form>
+
+{% if pessoa_id %}
+<form method="post" action="/disponibilidade">
+    <input type="hidden" name="pessoa_id" value="{{ pessoa_id }}">
+    <div class="checkbox-grid">
+        {% for s in slots %}
+        <label>
+            <input type="checkbox" name="slot_ids" value="{{ s.slot_id }}" {% if s.slot_id in selecionados %}checked{% endif %}>
+            {{ slot_label(s) }}
+        </label>
+        {% endfor %}
+    </div>
+    <p><button type="submit">{{ t('disponibilidade.salvar') }}</button></p>
+</form>
+{% endif %}
+{% endblock %}

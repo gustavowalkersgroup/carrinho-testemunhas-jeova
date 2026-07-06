@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ t('bloqueios.titulo') }}{% endblock %}
+{% block content %}
+<h1>{{ t('bloqueios.titulo') }}</h1>
+<table>
+    <tr><th>{{ t('bloqueios.col_inicio') }}</th><th>{{ t('bloqueios.col_fim') }}</th><th>{{ t('bloqueios.col_motivo') }}</th><th></th></tr>
+    {% for b in bloqueios %}
+    <tr>
+        <td data-label="{{ t('bloqueios.col_inicio') }}">{{ b.data_inicio }}</td>
+        <td data-label="{{ t('bloqueios.col_fim') }}">{{ b.data_fim }}</td>
+        <td data-label="{{ t('bloqueios.col_motivo') }}">{{ b.motivo or "" }}</td>
+        <td>
+            {% if b.ativo %}
+            <form class="inline" method="post" action="/bloqueios/{{ b.bloqueio_id }}/remover" onsubmit="return confirm('{{ t('bloqueios.confirmar_remover') }}');">
+                <button class="perigo" type="submit">{{ t('comum.remover') }}</button>
+            </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h2>{{ t('bloqueios.nova_titulo') }}</h2>
+<form class="form-box" method="post" action="/bloqueios">
+    <label>{{ t('bloqueios.data_inicio') }}<input type="date" name="data_inicio" required></label>
+    <label>{{ t('bloqueios.data_fim') }}<input type="date" name="data_fim" required></label>
+    <label>{{ t('bloqueios.motivo_opcional') }}<input type="text" name="motivo" placeholder="{{ t('bloqueios.motivo_placeholder') }}"></label>
+    <p><button type="submit">{{ t('bloqueios.bloquear') }}</button></p>
+</form>
+{% endblock %}

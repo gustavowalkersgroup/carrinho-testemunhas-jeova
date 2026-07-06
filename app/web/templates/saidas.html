@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}{{ t('saidas.titulo') }}{% endblock %}
+{% block content %}
+<h1>{{ t('saidas.titulo') }}</h1>
+<p><em>{{ t('saidas.ajuda') }}</em></p>
+
+<h2>{{ t('saidas.grade_titulo') }}</h2>
+<p><em>{{ t('saidas.grade_ajuda') }}</em></p>
+<form method="post" action="/saidas/grade">
+    <table>
+        <tr>
+            <th>{{ t('comum.dia') }}</th>
+            {% for p in periodos_saida %}<th>{{ periodos_saida_label[p] }}</th>{% endfor %}
+        </tr>
+        {% for d in dias_semana %}
+        <tr>
+            <td data-label="{{ t('comum.dia') }}">{{ dias_semana_label[d] }}</td>
+            {% for p in periodos_saida %}
+            <td data-label="{{ periodos_saida_label[p] }}" style="text-align:center;">
+                <input type="checkbox" name="celula" value="{{ d }}:{{ p }}" style="width:auto;"
+                    {% if (d ~ ':' ~ p) in grade_marcados %}checked{% endif %}>
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+    <p><button type="submit">{{ t('saidas.salvar_config') }}</button></p>
+</form>
+
+<h2>{{ t('saidas.cadastradas_titulo') }}</h2>
+<table>
+    <tr><th>{{ t('saidas.id_label') }}</th><th>{{ t('comum.dia') }}</th><th>{{ t('comum.periodo') }}</th><th>{{ t('comum.local') }}</th><th>{{ t('comum.ordem') }}</th><th>{{ t('comum.vigencia') }}</th><th>{{ t('comum.ativo') }}</th>{% if saidas %}<th></th>{% endif %}</tr>
+    {% for s in saidas %}
+    <tr>
+        <td data-label="{{ t('saidas.id_label') }}">{{ s.saida_id }}</td>
+        <td data-label="{{ t('comum.dia') }}">{{ dias_semana_label.get(s.dia_semana, s.dia_semana) }}</td>
+        <td data-label="{{ t('comum.periodo') }}">{{ t('comum.manha') if s.periodo.value == "MANHA" else t('comum.tarde') }}</td>
+        <td data-label="{{ t('comum.local') }}">{{ s.local }}</td>
+        <td data-label="{{ t('comum.ordem') }}">{{ s.ordem }}</td>
+        <td data-label="{{ t('comum.vigencia') }}">{{ s.vigencia_inicio }}{% if s.vigencia_fim %} {{ t('comum.ate') }} {{ s.vigencia_fim }}{% endif %}</td>
+        <td data-label="{{ t('comum.ativo') }}">{{ t('comum.sim') if s.ativo else t('comum.nao') }}</td>
+        <td>
+            <form method="post" action="/saidas/{{ s.saida_id }}/editar" style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+                <select name="dia_semana">
+                    {% for d in dias_semana %}
+                    <option value="{{ d }}" {% if d == s.dia_semana %}selected{% endif %}>{{ dias_semana_label[d] }}</option>
+                    {% endfor %}
+                </select>
+                <select name="periodo">
+                    <option value="MANHA" {% if s.periodo.value == "MANHA" %}selected{% endif %}>{{ t('comum.manha') }}</option>
+                    <option value="TARDE" {% if s.periodo.value == "TARDE" %}selected{% endif %}>{{ t('comum.tarde') }}</option>
+                </select>
+                <input type="text" name="local" value="{{ s.local }}" placeholder="{{ t('comum.local') }} {{ t('comum.opcional') }}">
+                <input type="number" name="ordem" value="{{ s.ordem }}" style="width:5em;">
+                <label style="white-space:nowrap;"><input type="checkbox" name="ativo" {% if s.ativo %}checked{% endif %} style="width:auto;"> {{ t('comum.ativo') }}</label>
+                <button type="submit">{{ t('comum.salvar') }}</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h2>{{ t('saidas.nova_titulo') }}</h2>
+<form class="form-box" method="post" action="/saidas">
+    <label>{{ t('saidas.id_label') }}<input type="text" name="saida_id" required></label>
+    <label>{{ t('comum.dia') }}
+        <select name="dia_semana" required>
+            {% for d in dias_semana %}
+            <option value="{{ d }}">{{ dias_semana_label[d] }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>{{ t('comum.periodo') }}
+        <select name="periodo" required>
+            <option value="MANHA">{{ t('comum.manha') }}</option>
+            <option value="TARDE">{{ t('comum.tarde') }}</option>
+        </select>
+    </label>
+    <label>{{ t('comum.local') }} {{ t('comum.opcional') }}<input type="text" name="local" placeholder="Zargon, Condominio, ..."></label>
+    <label>{{ t('comum.ordem_exibicao') }}<input type="number" name="ordem" value="99" required></label>
+    <label>{{ t('comum.vigente_a_partir_de') }}<input type="date" name="vigencia_inicio" required></label>
+    <p><button type="submit">{{ t('comum.cadastrar') }}</button></p>
+</form>
+{% endblock %}

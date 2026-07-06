@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ t('pessoa_editar.titulo', nome=pessoa.nome) }}{% endblock %}
+{% block content %}
+<h1>{{ t('pessoa_editar.titulo', nome=pessoa.nome) }}</h1>
+<form class="form-box" method="post" action="/pessoas/{{ pessoa.id }}/editar">
+    <label>{{ t('comum.nome') }}<input type="text" name="nome" value="{{ pessoa.nome }}" required></label>
+    <label>{{ t('comum.genero') }}
+        <select name="genero" required>
+            <option value="F" {% if pessoa.genero.value == "F" %}selected{% endif %}>{{ t('genero.f') }}</option>
+            <option value="M" {% if pessoa.genero.value == "M" %}selected{% endif %}>{{ t('genero.m') }}</option>
+        </select>
+    </label>
+    <label>{{ t('comum.telefone') }}<input type="text" name="telefone" value="{{ pessoa.telefone or '' }}"></label>
+    <label>{{ t('comum.observacoes') }}<input type="text" name="observacoes" value="{{ pessoa.observacoes or '' }}"></label>
+    <label>{{ t('pessoa_editar.conjuge_label') }}
+        <select name="conjuge_id">
+            <option value="">{{ t('pessoa_editar.sem_conjuge') }}</option>
+            {% for p in pessoas %}
+            <option value="{{ p.id }}" {% if p.id == pessoa.conjuge_id %}selected{% endif %}>{{ p.nome }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label><input type="checkbox" name="ativo" {% if pessoa.ativo %}checked{% endif %} style="width:auto;"> {{ t('comum.ativo') }}</label>
+    <label><input type="checkbox" name="pode_dirigir" {% if pessoa.pode_dirigir %}checked{% endif %} style="width:auto;"> {{ t('pessoa_editar.pode_dirigir') }}</label>
+    <p>
+        <button type="submit">{{ t('comum.salvar') }}</button>
+        <a class="btn secundario" href="/pessoas">{{ t('comum.cancelar') }}</a>
+    </p>
+</form>
+{% endblock %}

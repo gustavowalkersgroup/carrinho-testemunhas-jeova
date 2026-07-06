@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ t('pessoas.titulo') }}{% endblock %}
+{% block content %}
+<h1>{{ t('pessoas.titulo') }}</h1>
+<table>
+    <tr><th>{{ t('comum.nome') }}</th><th>{{ t('comum.genero') }}</th><th>{{ t('comum.ativo') }}</th><th>{{ t('comum.telefone') }}</th><th>{{ t('pessoas.col_conjuge') }}</th><th></th></tr>
+    {% for p in pessoas %}
+    <tr>
+        <td data-label="{{ t('comum.nome') }}">{{ p.nome }}</td>
+        <td data-label="{{ t('comum.genero') }}">{{ t('genero.m') if p.genero.value == "M" else t('genero.f') }}</td>
+        <td data-label="{{ t('comum.ativo') }}">{{ t('comum.sim') if p.ativo else t('comum.nao') }}</td>
+        <td data-label="{{ t('comum.telefone') }}">{{ p.telefone or "" }}</td>
+        <td data-label="{{ t('pessoas.col_conjuge') }}">{{ nomes_por_id[p.conjuge_id] if p.conjuge_id and p.conjuge_id in nomes_por_id else "" }}</td>
+        <td data-label="{{ t('comum.acoes') }}">
+            <div class="acoes">
+                <a class="btn secundario" href="/pessoas/{{ p.id }}/editar">✏️ {{ t('comum.editar') }}</a>
+                {% if p.ativo %}
+                <form class="inline" method="post" action="/pessoas/{{ p.id }}/inativar" onsubmit="return confirm('{{ t('pessoas.confirmar_inativar', nome=p.nome) }}');">
+                    <button class="perigo" type="submit">{{ t('comum.inativar') }}</button>
+                </form>
+                {% endif %}
+            </div>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h2>{{ t('pessoas.nova_titulo') }}</h2>
+<form class="form-box" method="post" action="/pessoas">
+    <label>{{ t('comum.nome') }}<input type="text" name="nome" required></label>
+    <label>{{ t('comum.genero') }}
+        <select name="genero" required>
+            <option value="F">{{ t('genero.f') }}</option>
+            <option value="M">{{ t('genero.m') }}</option>
+        </select>
+    </label>
+    <label>{{ t('comum.telefone') }} {{ t('comum.opcional') }}<input type="text" name="telefone"></label>
+    <label>{{ t('comum.observacoes') }} {{ t('comum.opcional') }}<input type="text" name="observacoes"></label>
+    <p><button type="submit">{{ t('comum.cadastrar') }}</button></p>
+</form>
+{% endblock %}

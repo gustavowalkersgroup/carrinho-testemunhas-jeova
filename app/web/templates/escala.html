@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}{{ t('escala.titulo') }}{% endblock %}
+{% block content %}
+<h1>{{ t('escala.titulo') }}</h1>
+<span class="subtitulo">{{ t('escala.subtitulo') }}</span>
+
+{% set origem_rotulo = {
+    "FIXO": (t('origem.fixo'), "tag-fixo"),
+    "SORTEIO": (t('origem.sorteio'), "tag-ok"),
+    "MANUAL": (t('origem.manual'), "tag-fixo"),
+    "FALLBACK_PAR_REPETIDO": (t('origem.fallback_par_repetido'), "tag-fallback"),
+    "FALLBACK_DUPLICADO": (t('origem.fallback_duplicado'), "tag-fallback"),
+    "VAZIO": (t('origem.vazio'), "tag-vazio"),
+} %}
+
+{% if erro == "nao_editavel" %}
+<div class="painel-erro">{{ t('escala.erro_nao_editavel') }}</div>
+{% endif %}
+
+<form class="form-box" method="get" action="/escala">
+    <label>{{ t('comum.mes') }}
+        <select name="mes">
+            {% for num, nome in meses_label.items() %}
+            <option value="{{ num }}" {% if num == mes %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>{{ t('comum.ano') }}<input type="number" name="ano" value="{{ ano }}" required></label>
+    <p><button type="submit">{{ t('escala.ver_mes') }}</button></p>
+</form>
+
+<p style="font-size:1.15rem;">
+    <strong>{{ mes_nome }} {{ ano }}</strong> —
+    {% if status == "fechado" %}
+        <span class="tag tag-fixo">{{ t('escala.status_fechado') }}</span>
+    {% elif linhas %}
+        <span class="tag tag-fallback">{{ t('escala.status_rascunho') }}</span>
+    {% else %}
+        <span class="tag tag-vazio">{{ t('escala.status_nao_gerada') }}</span>
+    {% endif %}
+</p>
+
+<div class="acoes">
+    <form class="inline" method="post" action="/escala/gerar" onsubmit="return confirm('{{ t('escala.confirmar_gerar') }}');">
+        <input type="hidden" name="ano" value="{{ ano }}">
+        <input type="hidden" name="mes" value="{{ mes }}">
+        <button type="submit">{{ t('escala.gerar_rascunho') }}</button>
+    </form>
+
+    {% if linhas and status != "fechado" %}
+    <form class="inline" method="post" action="/escala/fechar" onsubmit="return confirm('{{ t('escala.confirmar_fechar') }}');">
+        <input type="hidden" name="ano" value="{{ ano }}">
+        <input type="hidden" name="mes" value="{{ mes }}">
+        <button type="submit" class="secundario">{{ t('escala.fechar_mes') }}</button>
+    </form>
+    {% endif %}
+
+    {% if linhas %}
+    <a class="btn secundario" href="/escala/pdf?ano={{ ano }}&mes={{ mes }}">{{ t('escala.exportar_pdf') }}</a>
+    {% endif %}
+</div>
+
+{% if avisos %}
+<h2>{{ t('escala.avisos_titulo') }}</h2>
+<ul class="avisos">
+    {% for a in avisos %}
+    <li class="{{ a.nivel }}">{{ t_aviso(a) }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+{% if linhas %}
+<h2>{{ t('escala.duplas_titulo') }}</h2>
+<div class="legenda">
+    <span><i class="leg-ok"></i> {{ t('escala.legenda_ok') }}</span>
+    <span><i class="leg-fallback"></i> {{ t('escala.legenda_fallback') }}</span>
+    <span><i class="leg-vazio"></i> {{ t('escala.legenda_vazio') }}</span>
+</div>
+<table>
+    <tr><th>{{ t('escala.col_data') }}</th><th>{{ t('escala.col_local') }}</th><th>{{ t('escala.col_pessoa1') }}</th><th>{{ t('escala.col_pessoa2') }}</th><th>{{ t('escala.col_origem') }}</th>{% if status != "fechado" %}<th>{{ t('escala.col_acao') }}</th>{% endif %}</tr>
+    {% for l in linhas %}
+    <tr class="{{ 'status-vazio' if not l.pessoa_id_1 and not l.pessoa_id_2 else 'status-fallback' if 'FALLBACK' in l.origem else 'status-ok' }}">
+        <td data-label="{{ t('escala.col_data') }}">{{ l.data.strftime('%d/%m') }}</td>
+        <td data-label="{{ t('escala.col_local') }}">{{ l.slot_label }}</td>
+        {% if status != "fechado" %}
+        <td colspan="2" data-label="{{ t('escala.col_pessoa1') }}">
+            <form method="post" action="/escala/designacao/{{ l.id }}/editar" style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input type="hidden" name="ano" value="{{ ano }}">
+                <input type="hidden" name="mes" value="{{ mes }}">
+                <select name="pessoa_id_1" style="flex:1; min-width:150px;">
+                    <option value="">{{ t('comum.vazio_opcao') }}</option>
+                    {% for p in pessoas %}
+                    <option value="{{ p.id }}" {% if p.id == l.pessoa_id_1 %}selected{% endif %}>{{ p.nome }}</option>
+                    {% endfor %}
+                </select>
+                <select name="pessoa_id_2" style="flex:1; min-width:150px;">
+                    <option value="">{{ t('comum.vazio_opcao') }}</option>
+                    {% for p in pessoas %}
+                    <option value="{{ p.id }}" {% if p.id == l.pessoa_id_2 %}selected{% endif %}>{{ p.nome }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">{{ t('comum.salvar') }}</button>
+            </form>
+        </td>
+        {% else %}
+        <td data-label="{{ t('escala.col_pessoa1') }}">{{ l.pessoa_1 }}</td>
+        <td data-label="{{ t('escala.col_pessoa2') }}">{{ l.pessoa_2 }}</td>
+        {% endif %}
+        {% set rot = origem_rotulo.get(l.origem, (l.origem, "tag-fixo")) %}
+        <td data-label="{{ t('escala.col_origem') }}"><span class="tag {{ rot[1] }}">{{ rot[0] }}</span></td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% if linhas_saidas %}
+<h2>{{ t('escala.saidas_titulo') }}</h2>
+<table>
+    <tr><th>{{ t('escala.col_data') }}</th><th>{{ t('escala.col_saida') }}</th><th>{{ t('escala.col_dirigente') }}</th>{% if status != "fechado" %}<th>{{ t('escala.col_acao') }}</th>{% endif %}</tr>
+    {% for s in linhas_saidas %}
+    <tr class="{{ 'status-vazio' if not s.dirigente_id else 'status-ok' }}">
+        <td data-label="{{ t('escala.col_data') }}">{{ s.data.strftime('%d/%m') }}</td>
+        <td data-label="{{ t('escala.col_saida') }}">{{ s.saida_label }}</td>
+        {% if status != "fechado" %}
+        <td data-label="{{ t('escala.col_dirigente') }}">
+            <form method="post" action="/escala/saida/{{ s.id }}/editar" style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input type="hidden" name="ano" value="{{ ano }}">
+                <input type="hidden" name="mes" value="{{ mes }}">
+                <select name="dirigente_id" style="flex:1; min-width:180px;">
+                    <option value="">{{ t('comum.vazio_opcao') }}</option>
+                    {% for dir in dirigentes %}
+                    <option value="{{ dir.id }}" {% if dir.id == s.dirigente_id %}selected{% endif %}>{{ dir.nome }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">{{ t('comum.salvar') }}</button>
+            </form>
+        </td>
+        {% else %}
+        <td data-label="{{ t('escala.col_dirigente') }}">{{ s.dirigente_nome }}</td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+{% else %}
+<p style="font-size:1.1rem;">{{ t('escala.nenhum_rascunho', gerar=t('escala.gerar_rascunho')) }}</p>
+{% endif %}
+{% endblock %}

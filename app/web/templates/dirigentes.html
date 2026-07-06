@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ t('dirigentes.titulo') }}{% endblock %}
+{% block content %}
+<h1>{{ t('dirigentes.titulo') }}</h1>
+<p><em>{{ t('dirigentes.ajuda') }}</em></p>
+<table>
+    <tr><th>{{ t('comum.nome') }}</th><th></th></tr>
+    {% for d in dirigentes %}
+    <tr>
+        <td data-label="{{ t('comum.nome') }}">{{ d.nome }}</td>
+        <td><a class="btn secundario" href="/dirigentes?pessoa_id={{ d.id }}">{{ t('dirigentes.disponibilidade_link') }}</a></td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% if pessoa_id %}
+<h2>{{ t('dirigentes.disponibilidade_titulo') }}</h2>
+<p><em>{{ t('dirigentes.ajuda_disponibilidade') }}</em></p>
+<form method="post" action="/dirigentes/{{ pessoa_id }}/disponibilidade">
+    <div class="checkbox-grid">
+        {% for s in saidas %}
+        <label>
+            <input type="checkbox" name="saida_ids" value="{{ s.saida_id }}" {% if s.saida_id in selecionados %}checked{% endif %}>
+            {{ saida_label(s) }}
+        </label>
+        {% endfor %}
+    </div>
+    <p><button type="submit">{{ t('disponibilidade.salvar') }}</button></p>
+</form>
+{% endif %}
+{% endblock %}

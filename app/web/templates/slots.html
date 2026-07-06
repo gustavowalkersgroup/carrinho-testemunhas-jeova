@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ t('slots.titulo') }}{% endblock %}
+{% block content %}
+<h1>{{ t('slots.titulo') }}</h1>
+<p><em>{{ t('slots.ajuda') }}</em></p>
+<table>
+    <tr><th>{{ t('slots.col_id') }}</th><th>{{ t('comum.dia') }}</th><th>{{ t('comum.periodo') }}</th><th>{{ t('comum.local') }}</th><th>{{ t('comum.ordem') }}</th><th>{{ t('slots.col_dirigente') }}</th><th>{{ t('comum.vigencia') }}</th><th>{{ t('comum.ativo') }}</th></tr>
+    {% for s in slots %}
+    <tr>
+        <td data-label="{{ t('slots.col_id') }}">{{ s.slot_id }}</td>
+        <td data-label="{{ t('comum.dia') }}">{{ dias_semana_label.get(s.dia_semana, s.dia_semana) }}</td>
+        <td data-label="{{ t('comum.periodo') }}">{{ t('comum.manha') if s.periodo.value == "MANHA" else t('comum.tarde') }}</td>
+        <td data-label="{{ t('comum.local') }}">{{ s.local }}</td>
+        <td data-label="{{ t('comum.ordem') }}">{{ s.ordem }}</td>
+        <td data-label="{{ t('slots.col_dirigente') }}">{{ t('comum.sim') if s.requer_dirigente else t('comum.nao') }}</td>
+        <td data-label="{{ t('comum.vigencia') }}">{{ s.vigencia_inicio }}{% if s.vigencia_fim %} {{ t('comum.ate') }} {{ s.vigencia_fim }}{% endif %}</td>
+        <td data-label="{{ t('comum.ativo') }}">{{ t('comum.sim') if s.ativo else t('comum.nao') }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h2>{{ t('slots.nova_titulo') }}</h2>
+<form class="form-box" method="post" action="/slots">
+    <label>{{ t('slots.col_id') }} — {{ t('slots.id_ajuda') }}<input type="text" name="slot_id" required></label>
+    <label>{{ t('comum.dia') }}
+        <select name="dia_semana" required>
+            {% for d in dias_semana %}
+            <option value="{{ d }}">{{ dias_semana_label[d] }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>{{ t('comum.periodo') }}
+        <select name="periodo" required>
+            <option value="MANHA">{{ t('comum.manha') }}</option>
+            <option value="TARDE">{{ t('comum.tarde') }}</option>
+        </select>
+    </label>
+    <label>{{ t('comum.local') }}<input type="text" name="local" required placeholder="Zargon, Condominio, ..."></label>
+    <label>{{ t('comum.ordem_exibicao') }}<input type="number" name="ordem" value="99" required></label>
+    <label><input type="checkbox" name="requer_dirigente" style="width:auto;"> {{ t('slots.requer_dirigente') }}</label>
+    <label>{{ t('comum.vigente_a_partir_de') }}<input type="date" name="vigencia_inicio" required></label>
+    <p><button type="submit">{{ t('comum.cadastrar') }}</button></p>
+</form>
+{% endblock %}

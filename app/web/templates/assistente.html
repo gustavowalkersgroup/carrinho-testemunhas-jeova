@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ t('assistente.titulo') }}{% endblock %}
+{% block content %}
+<h1>{{ t('assistente.titulo') }}</h1>
+<span class="subtitulo">{{ t('assistente.passo_de', atual=passo, total=total_passos) }}</span>
+
+{% if passo == 1 %}
+<h2>{{ t('assistente.boasvindas_titulo') }}</h2>
+<p>{{ t('assistente.boasvindas_texto') }}</p>
+<form class="form-box" method="post" action="/assistente/passo1">
+    <label>{{ t('assistente.boasvindas_nome_label') }}
+        <input type="text" name="nome_congregacao" value="{{ nome_congregacao }}"
+            placeholder="{{ t('configuracoes.nome_congregacao_placeholder') }}" required>
+    </label>
+    <label>{{ t('assistente.boasvindas_idioma_label') }}
+        <select name="idioma">
+            {% for codigo, nome in idiomas_disponiveis.items() %}
+            <option value="{{ codigo }}" {% if codigo == idioma_atual %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <p><button type="submit">{{ t('comum.proximo') }}</button></p>
+</form>
+
+{% elif passo == 2 %}
+<h2>{{ t('assistente.slots_titulo') }}</h2>
+<p>{{ t('assistente.slots_texto') }}</p>
+<p><a class="btn card-link" href="/slots" style="display:inline-block;">{{ t('configuracoes.link_slots') }}</a></p>
+<div class="acoes">
+    <a class="btn secundario" href="/assistente?passo=1">{{ t('comum.anterior') }}</a>
+    <a class="btn" href="/assistente?passo=3">{{ t('comum.proximo') }}</a>
+</div>
+
+{% elif passo == 3 %}
+<h2>{{ t('assistente.saidas_titulo') }}</h2>
+<p>{{ t('assistente.saidas_texto') }}</p>
+<p><a class="btn card-link" href="/saidas" style="display:inline-block;">{{ t('configuracoes.link_saidas') }}</a></p>
+<div class="acoes">
+    <a class="btn secundario" href="/assistente?passo=2">{{ t('comum.anterior') }}</a>
+    <a class="btn" href="/assistente?passo=4">{{ t('comum.proximo') }}</a>
+</div>
+
+{% elif passo == 4 %}
+<h2>{{ t('assistente.pessoas_titulo') }}</h2>
+<p>{{ t('assistente.pessoas_texto') }}</p>
+<p><a class="btn card-link" href="/pessoas" style="display:inline-block;">{{ t('assistente.pessoas_ir') }}</a></p>
+<div class="acoes">
+    <a class="btn secundario" href="/assistente?passo=3">{{ t('comum.anterior') }}</a>
+    <a class="btn" href="/assistente?passo=5">{{ t('comum.proximo') }}</a>
+</div>
+
+{% else %}
+<h2>{{ t('assistente.concluido_titulo') }}</h2>
+<p>{{ t('assistente.concluido_texto') }}</p>
+<form method="post" action="/assistente/concluir">
+    <div class="acoes">
+        <a class="btn secundario" href="/assistente?passo=4">{{ t('comum.anterior') }}</a>
+        <button type="submit">{{ t('assistente.concluido_ir') }}</button>
+    </div>
+</form>
+{% endif %}
+{% endblock %}
