@@ -199,3 +199,27 @@ def test_nao_da_para_trocar_para_congregacao_alheia(duas_congregacoes, caixa_de_
     pagina = cliente_a.get("/pessoas")
     assert "Ana da A" in pagina.text
     assert "Bruno da B" not in pagina.text
+
+
+def test_pdf_sai_por_congregacao_e_nao_deixa_rastro(duas_congregacoes, caixa_de_entrada):
+    """No modo hospedado o PDF é gravado em disco temporário com nome único e
+    apagado depois do envio: com nome fixo, dois pedidos simultâneos do mesmo
+    mês na mesma instância serverless entregariam o PDF um do outro."""
+    import os
+
+    from app import config
+
+    cliente_a = _cliente_logado(caixa_de_entrada, "pessoa.a@exemplo.com")
+    cliente_a.post("/escala/gerar", data={"ano": "2026", "mes": "9"})
+
+    antes = set(os.listdir(config.ESCALAS_DIR)) if config.ESCALAS_DIR.exists() else set()
+
+    resposta = cliente_a.get("/escala/pdf?ano=2026&mes=9")
+    assert resposta.status_code == 200
+    assert resposta.headers["content-type"] == "application/pdf"
+    assert len(resposta.content) > 500
+    # o nome oferecido ao usuário não carrega o sufixo aleatório do disco
+    assert "CARRINHO_2026-09.pdf" in resposta.headers["content-disposition"]
+
+    depois = set(os.listdir(config.ESCALAS_DIR))
+    assert depois == antes, f"sobrou arquivo temporário: {depois - antes}"

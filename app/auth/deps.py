@@ -17,7 +17,7 @@ from typing import Optional
 from fastapi import Depends, Request
 
 from app import config
-from app.auth import repo, service
+from app.auth import service
 from app.auth.models import Congregacao, Papel, SessaoAtual, Usuario
 from app.db.connection import get_connection
 
@@ -118,15 +118,6 @@ def get_conn(conn=Depends(_conexao_do_request), _s=Depends(sessao_atual)):
     Depende de `sessao_atual` de propósito: garante que `definir_congregacao`
     já rodou. Sem isso a rota trabalharia numa conexão sem congregação e as
     consultas voltariam vazias."""
-    return conn
-
-
-def conn_super_admin(request: Request, sessao: SessaoAtual = Depends(exigir_super_admin)):
-    """Conexão que enxerga TODAS as congregações. Só depois de a sessão ter
-    sido validada como super-admin — nunca a partir de algo vindo da URL."""
-    conn = request.state.conn
-    if config.MODO_WEB:
-        conn.definir_super_admin(True)
     return conn
 
 

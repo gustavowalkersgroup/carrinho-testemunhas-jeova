@@ -25,7 +25,6 @@ from contextlib import contextmanager
 from typing import Any, Iterable, Optional, Sequence
 
 import psycopg
-from psycopg import sql as pgsql
 
 from app import config
 
@@ -199,4 +198,4 @@ def get_connection(congregacao_id: Optional[int] = None, super_admin: bool = Fal
         conn.close()
 
 
-__all__ = ["Conexao", "Row", "conectar", "get_connection", "pgsql"]
+__all__ = ["Conexao", "Row", "conectar", "get_connection"]

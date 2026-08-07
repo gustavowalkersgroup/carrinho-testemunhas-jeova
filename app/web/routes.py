@@ -1,7 +1,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 
 from app import i18n
 from app.api.deps import get_conn
@@ -13,7 +13,7 @@ from app.models import (
     SaidaCampoTemplateIn,
     SlotTipoIn,
 )
-from app.pdf.pdf_generator import gerar_pdf_escala
+from app.pdf.resposta import resposta_pdf
 from app.repositories import (
     bloqueios_repo,
     configuracoes_repo,
@@ -222,18 +222,7 @@ async def fechar_escala(request: Request, conn=Depends(get_conn)):
 
 @router.get("/escala/pdf")
 def exportar_pdf(ano: int, mes: int, conn=Depends(get_conn)):
-    dados = escala_service.montar_dados_pdf(conn, ano, mes)
-    gerar_pdf_escala(
-        dados.mes_referencia,
-        dados.designacoes,
-        dados.designacoes_dirigentes,
-        dados.slots,
-        dados.bloqueios,
-        dados.pessoas_por_id,
-        dados.dirigentes_por_id,
-        dados.caminho,
-    )
-    return FileResponse(dados.caminho, filename=dados.caminho.name, media_type="application/pdf")
+    return resposta_pdf(escala_service.montar_dados_pdf(conn, ano, mes))
 
 
 # --- pessoas ----------------------------------------------------------------

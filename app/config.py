@@ -36,6 +36,9 @@ DATA_DIR = BASE_DIR / "data"
 ESCALAS_DIR = DATA_DIR / "escalas"
 DB_PATH = DATA_DIR / "carrinho.db"
 
+# Redefinido mais abaixo, quando o modo WEB é detectado: lá o disco é
+# somente-leitura fora de /tmp, e escrever ao lado do código falha.
+
 RESOURCES_DIR = _resolve_resources_dir()
 APP_DIR = RESOURCES_DIR / "app"
 SEEDS_DIR = APP_DIR / "seeds"
@@ -65,6 +68,16 @@ PORT = 8756
 DATABASE_URL = _env("DATABASE_URL") or _env("POSTGRES_URL")
 MODO_WEB = bool(DATABASE_URL)
 MODO_LOCAL = not MODO_WEB
+
+if MODO_WEB:
+    # Em serverless, o único lugar gravável é o diretório temporário — e ele
+    # some quando a instância é reciclada, o que é exatamente o que se quer
+    # para um PDF que já foi baixado. No desktop nada disso muda: o arquivo
+    # continua sendo gerado ao lado do executável, onde o usuário o encontra.
+    import tempfile
+
+    DATA_DIR = Path(tempfile.gettempdir()) / "escala-carrinho"
+    ESCALAS_DIR = DATA_DIR / "escalas"
 
 # congregação usada no modo LOCAL (banco de uma congregação só)
 CONGREGACAO_LOCAL_ID = 1
@@ -167,8 +180,8 @@ PYTHON_WEEKDAY_TO_DIA_SEMANA = {
 
 
 def ensure_dirs() -> None:
-    # No modo WEB o disco é somente-leitura (fora /tmp) e não há nada para criar.
-    if MODO_WEB:
-        return
+    # Vale nos dois modos: no WEB, DATA_DIR já aponta para o diretório
+    # temporário, que é gravável. Sem isto a exportação de PDF quebraria no ar,
+    # porque o disco ao lado do código é somente-leitura em serverless.
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     ESCALAS_DIR.mkdir(parents=True, exist_ok=True)
