@@ -46,10 +46,11 @@ def criar(conn: sqlite3.Connection, pessoa: PessoaIn) -> Pessoa:
         """
         INSERT INTO pessoas (nome, genero, ativo, telefone, observacoes, conjuge_id, pode_dirigir)
         VALUES (?, ?, ?, ?, ?, ?, ?)
+        RETURNING id
         """,
         (pessoa.nome, pessoa.genero.value, int(pessoa.ativo), pessoa.telefone, pessoa.observacoes, pessoa.conjuge_id, int(pessoa.pode_dirigir)),
     )
-    return Pessoa(id=cur.lastrowid, **pessoa.model_dump())
+    return Pessoa(id=cur.fetchone()[0], **pessoa.model_dump())
 
 
 def atualizar(conn: sqlite3.Connection, pessoa_id: int, pessoa: PessoaIn) -> Optional[Pessoa]:

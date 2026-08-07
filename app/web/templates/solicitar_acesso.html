@@ -1,0 +1,50 @@
+{% extends "base_publico.html" %}
+{% block title %}{{ t('acesso.solicitar') }}{% endblock %}
+
+{% block content %}
+<p>{{ t('acesso.explique_solicitacao') }}</p>
+
+<form method="post" action="/solicitar-acesso" class="form-box">
+    <label for="nome">{{ t('acesso.seu_nome') }}</label>
+    <input type="text" id="nome" name="nome" value="{{ nome or '' }}" required autocomplete="name">
+
+    <label for="email">{{ t('acesso.email') }}</label>
+    <input type="email" id="email" name="email" value="{{ email or '' }}" required autocomplete="email"
+           placeholder="voce@exemplo.com">
+
+    <label for="congregacao">{{ t('acesso.qual_congregacao') }}</label>
+    <select id="congregacao" name="congregacao" required onchange="alternarNova(this.value)">
+        <option value="">— {{ t('acesso.selecione') }} —</option>
+        {% for c in congregacoes %}
+        <option value="{{ c.id }}">{{ c.nome }}{% if c.cidade %} — {{ c.cidade }}{% endif %}</option>
+        {% endfor %}
+        <option value="nova">➕ {{ t('acesso.congregacao_nova') }}</option>
+    </select>
+
+    <div id="bloco-nova" hidden>
+        <label for="congregacao_nova">{{ t('acesso.nome_congregacao_nova') }}</label>
+        <input type="text" id="congregacao_nova" name="congregacao_nova"
+               placeholder="{{ t('acesso.exemplo_congregacao') }}">
+        <p class="ajuda">{{ t('acesso.nova_vira_admin') }}</p>
+    </div>
+
+    <label for="mensagem">{{ t('acesso.mensagem') }}</label>
+    <input type="text" id="mensagem" name="mensagem" maxlength="300"
+           placeholder="{{ t('acesso.mensagem_exemplo') }}">
+
+    <button type="submit">{{ t('acesso.enviar_solicitacao') }}</button>
+</form>
+
+<p class="ajuda">{{ t('acesso.ja_tem_acesso') }} <a href="/entrar">{{ t('acesso.entrar') }}</a></p>
+
+<script>
+    function alternarNova(valor) {
+        var bloco = document.getElementById("bloco-nova");
+        var campo = document.getElementById("congregacao_nova");
+        var nova = valor === "nova";
+        bloco.hidden = !nova;
+        campo.required = nova;
+    }
+    alternarNova(document.getElementById("congregacao").value);
+</script>
+{% endblock %}

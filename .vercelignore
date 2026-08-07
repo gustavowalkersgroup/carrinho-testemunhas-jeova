@@ -1,0 +1,10 @@
+# Nada disto precisa ir para a função serverless.
+tests/
+installer/
+build.spec
+main.py
+requirements-desktop.txt
+requirements-dev.txt
+*.docx
+*.pdf
+.claude/

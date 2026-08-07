@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}{{ t('admin.instalacao') }}{% endblock %}
+
+{% block content %}
+<h1>{{ t('admin.instalacao') }}</h1>
+<p class="subtitulo">{{ t('admin.instalacao_subtitulo') }}</p>
+
+{% set erro = request.query_params.get('erro') %}
+{% if erro %}
+<div class="painel-erro">
+    {% if erro == 'ultimo_super' %}{{ t('admin.erro_ultimo_super') }}
+    {% elif erro == 'nao_rebaixe_a_si' %}{{ t('admin.erro_nao_rebaixe_a_si') }}
+    {% elif erro == 'nao_bloqueie_a_si' %}{{ t('admin.erro_nao_bloqueie_a_si') }}
+    {% elif erro == 'confirmacao' %}{{ t('admin.erro_confirmacao') }}
+    {% elif erro == 'nome_vazio' %}{{ t('admin.erro_nome_vazio') }}
+    {% else %}{{ erro }}{% endif %}
+</div>
+{% endif %}
+
+{% if not email_configurado %}
+<div class="painel-atencao">
+    <strong>{{ t('admin.sem_email_titulo') }}</strong>
+    <p>{{ t('admin.sem_email_detalhe') }}</p>
+</div>
+{% endif %}
+
+<h2>{{ t('admin.congregacoes') }}</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>{{ t('admin.nome') }}</th>
+            <th>{{ t('admin.identificador') }}</th>
+            <th>{{ t('admin.situacao') }}</th>
+            <th>{{ t('admin.acoes') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for c in congregacoes %}
+        <tr>
+            <td>
+                <form method="post" action="/admin/congregacoes/{{ c.id }}/renomear" class="form-decisao">
+                    <input type="text" name="nome" value="{{ c.nome }}" required>
+                    <input type="text" name="cidade" value="{{ c.cidade }}" placeholder="{{ t('admin.cidade') }}">
+                    <button type="submit" class="secundario">{{ t('admin.salvar') }}</button>
+                </form>
+            </td>
+            <td><code>{{ c.slug }}</code></td>
+            <td>
+                <form method="post" action="/admin/congregacoes/{{ c.id }}/ativar" class="inline">
+                    <input type="hidden" name="ativa" value="{{ 0 if c.ativa else 1 }}">
+                    <button type="submit" class="secundario">
+                        {% if c.ativa %}{{ t('admin.ativa_desativar') }}{% else %}{{ t('admin.inativa_ativar') }}{% endif %}
+                    </button>
+                </form>
+            </td>
+            <td>
+                <details>
+                    <summary class="texto-perigo">{{ t('admin.apagar') }}</summary>
+                    <form method="post" action="/admin/congregacoes/{{ c.id }}/remover" class="form-decisao">
+                        <p class="ajuda">{{ t('admin.apagar_aviso', nome=c.nome) }}</p>
+                        <input type="text" name="confirmacao" placeholder="{{ c.nome }}" required>
+                        <button type="submit" class="perigo">{{ t('admin.apagar_confirmar') }}</button>
+                    </form>
+                </details>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<h2>{{ t('admin.criar_congregacao') }}</h2>
+<form method="post" action="/admin/congregacoes/criar" class="form-box">
+    <label for="nome-nova">{{ t('admin.nome') }}</label>
+    <input type="text" id="nome-nova" name="nome" required>
+    <label for="cidade-nova">{{ t('admin.cidade') }}</label>
+    <input type="text" id="cidade-nova" name="cidade">
+    <button type="submit">{{ t('admin.criar') }}</button>
+</form>
+
+<h2>{{ t('admin.pessoas_com_acesso') }}</h2>
+<table>
+    <thead>
+        <tr>
+            <th>{{ t('admin.pessoa') }}</th>
+            <th>{{ t('admin.congregacoes') }}</th>
+            <th>{{ t('admin.super_admin') }}</th>
+            <th>{{ t('admin.situacao') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for u in usuarios %}
+        <tr>
+            <td>
+                <strong>{{ u.nome or u.email }}</strong><br>
+                <span class="texto-suave">{{ u.email }}</span>
+            </td>
+            <td>
+                {% if vinculos[u.id] %}{{ vinculos[u.id] | join(', ') }}
+                {% else %}<em class="texto-suave">{{ t('admin.sem_vinculo') }}</em>{% endif %}
+            </td>
+            <td>
+                {% if u.email in super_admins_env %}
+                    <span class="etiqueta-super">{{ t('admin.fixo_por_variavel') }}</span>
+                {% else %}
+                <form method="post" action="/admin/usuarios/super-admin" class="inline">
+                    <input type="hidden" name="usuario_id" value="{{ u.id }}">
+                    <input type="hidden" name="super_admin" value="{{ 0 if u.super_admin else 1 }}">
+                    <button type="submit" class="secundario">
+                        {% if u.super_admin %}{{ t('admin.rebaixar') }}{% else %}{{ t('admin.promover') }}{% endif %}
+                    </button>
+                </form>
+                {% endif %}
+            </td>
+            <td>
+                <form method="post" action="/admin/usuarios/bloquear" class="inline">
+                    <input type="hidden" name="usuario_id" value="{{ u.id }}">
+                    <input type="hidden" name="ativo" value="{{ 0 if u.ativo else 1 }}">
+                    <button type="submit" class="{% if u.ativo %}perigo{% else %}secundario{% endif %}">
+                        {% if u.ativo %}{{ t('admin.bloquear') }}{% else %}{{ t('admin.desbloquear') }}{% endif %}
+                    </button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% if base_url %}
+<h2>{{ t('admin.link_para_divulgar') }}</h2>
+<p><code class="link-publico">{{ base_url }}/solicitar-acesso</code></p>
+{% endif %}
+{% endblock %}

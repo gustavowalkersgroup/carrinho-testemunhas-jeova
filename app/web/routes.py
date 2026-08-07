@@ -2,11 +2,10 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 
 from app import i18n
 from app.api.deps import get_conn
-from app.config import DIAS_SEMANA_ORDEM, TEMPLATES_DIR
+from app.config import DIAS_SEMANA_ORDEM
 from app.models import (
     BloqueioIn,
     FixoIn,
@@ -25,9 +24,10 @@ from app.repositories import (
     slots_repo,
 )
 from app.services import cadastro_service, escala_service
+from app.web.render import render as render_compartilhado
+from app.web.render import templates
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 PERIODOS_SAIDA = ["MANHA", "TARDE"]
 ASSISTENTE_TOTAL_PASSOS = 5
@@ -73,15 +73,9 @@ def _idioma_atual(conn) -> str:
 
 
 def render(nome_template: str, request: Request, conn, status_code: int = 200, **contexto):
-    idioma = contexto.pop("idioma", None) or _idioma_atual(conn)
-    contexto["request"] = request
-    contexto["t"] = lambda chave, **kw: i18n.t(idioma, chave, **kw)
-    contexto["t_aviso"] = lambda a: i18n.render_aviso(idioma, a)
-    contexto["idioma_atual"] = idioma
-    contexto["rtl"] = idioma in i18n.IDIOMAS_RTL
-    contexto["idiomas_disponiveis"] = i18n.IDIOMAS
-    contexto["nome_congregacao"] = configuracoes_repo.obter(conn, "nome_congregacao", "") or ""
-    return templates.TemplateResponse(nome_template, contexto, status_code=status_code)
+    return render_compartilhado(
+        nome_template, request, conn, status_code=status_code, **contexto
+    )
 
 
 def _dias_semana_label(idioma: str) -> dict[str, str]:
@@ -264,6 +258,11 @@ async def criar_pessoa(request: Request, conn=Depends(get_conn)):
 @router.get("/pessoas/{pessoa_id}/editar")
 def editar_pessoa_form(pessoa_id: int, request: Request, conn=Depends(get_conn)):
     pessoa = pessoas_repo.obter(conn, pessoa_id)
+    if pessoa is None:
+        # id inexistente — ou, no modo hospedado, id de OUTRA congregação, que
+        # para esta sessão simplesmente não existe. Nos dois casos é 404, nunca
+        # um 500 que confirmaria que aquele id existe em algum lugar.
+        raise HTTPException(status_code=404, detail="Pessoa não encontrada.")
     genero_oposto = "F" if pessoa.genero.value == "M" else "M"
     pessoas_conjuge = [
         p for p in pessoas_repo.listar(conn)
@@ -466,6 +465,8 @@ async def criar_saida(request: Request, conn=Depends(get_conn)):
 async def editar_saida(saida_id: str, request: Request, conn=Depends(get_conn)):
     form = await request.form()
     atual = saida_repo.obter(conn, saida_id)
+    if atual is None:
+        raise HTTPException(status_code=404, detail="Saída não encontrada.")
     saida_repo.atualizar(conn, saida_id, SaidaCampoTemplateIn(
         saida_id=saida_id, dia_semana=_campo(form, "dia_semana"), periodo=_campo(form, "periodo"),
         local=form.get("local") or "", ordem=_campo_int(form, "ordem"),
@@ -500,6 +501,8 @@ async def criar_slot(request: Request, conn=Depends(get_conn)):
 async def editar_slot(slot_id: str, request: Request, conn=Depends(get_conn)):
     form = await request.form()
     atual = slots_repo.obter(conn, slot_id)
+    if atual is None:
+        raise HTTPException(status_code=404, detail="Horário não encontrado.")
     slots_repo.atualizar(conn, slot_id, SlotTipoIn(
         slot_id=slot_id, dia_semana=_campo(form, "dia_semana"), periodo=_campo(form, "periodo"),
         local=_campo(form, "local"), ordem=_campo_int(form, "ordem"), requer_dirigente="requer_dirigente" in form,

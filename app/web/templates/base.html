@@ -8,7 +8,30 @@
 </head>
 <body>
     <header class="topbar">
-        <strong>{{ nome_congregacao or t('app.nome_padrao') }}</strong>
+        <div class="topbar-linha">
+            <strong>{{ nome_congregacao or t('app.nome_padrao') }}</strong>
+            {% if modo_web and sessao %}
+            <div class="conta">
+                {% if sessao.membros | length > 1 %}
+                <form method="post" action="/trocar-congregacao" class="inline">
+                    <select name="congregacao_id" onchange="this.form.submit()" aria-label="{{ t('acesso.trocar_congregacao') }}">
+                        {% for m in sessao.membros %}
+                        <option value="{{ m.congregacao_id }}"
+                            {% if sessao.congregacao and m.congregacao_id == sessao.congregacao.id %}selected{% endif %}>
+                            {{ m.congregacao_nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <noscript><button type="submit">{{ t('acesso.trocar') }}</button></noscript>
+                </form>
+                {% endif %}
+                <span class="conta-email" title="{{ sessao.usuario.email }}">{{ sessao.usuario.email }}</span>
+                <form method="post" action="/sair" class="inline">
+                    <button type="submit" class="secundario">{{ t('acesso.sair') }}</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
         <nav>
             <a href="/escala"><span class="nav-icone">📅</span> {{ t('nav.escala') }}</a>
             <a href="/pessoas"><span class="nav-icone">👤</span> {{ t('nav.pessoas') }}</a>
@@ -17,6 +40,9 @@
             <a href="/dirigentes"><span class="nav-icone">🧭</span> {{ t('nav.dirigentes') }}</a>
             <a href="/bloqueios"><span class="nav-icone">🚫</span> {{ t('nav.bloqueios') }}</a>
             <a href="/configuracoes"><span class="nav-icone">⚙️</span> {{ t('nav.configuracoes') }}</a>
+            {% if modo_web and sessao and sessao.pode_administrar_congregacao %}
+            <a href="/admin"><span class="nav-icone">🛡️</span> {{ t('nav.admin') }}</a>
+            {% endif %}
         </nav>
     </header>
     <main class="conteudo">

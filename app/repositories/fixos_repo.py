@@ -73,6 +73,7 @@ def criar(conn: sqlite3.Connection, fixo: FixoIn) -> Fixo:
         """
         INSERT INTO fixos (slot_id, pessoa_id_1, pessoa_id_2, vigencia_inicio, vigencia_fim, ativo)
         VALUES (?, ?, ?, ?, ?, ?)
+        RETURNING fixo_id
         """,
         (
             fixo.slot_id,
@@ -83,7 +84,7 @@ def criar(conn: sqlite3.Connection, fixo: FixoIn) -> Fixo:
             int(fixo.ativo),
         ),
     )
-    return Fixo(fixo_id=cur.lastrowid, **fixo.model_dump())
+    return Fixo(fixo_id=cur.fetchone()[0], **fixo.model_dump())
 
 
 def encerrar_vigencia(conn: sqlite3.Connection, fixo_id: int, data_fim: date) -> bool:

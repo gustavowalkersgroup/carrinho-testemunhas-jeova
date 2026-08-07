@@ -40,7 +40,7 @@ def ultima_designacao_por_pessoa(conn: sqlite3.Connection) -> dict[int, str]:
             UNION ALL
             SELECT pessoa_id_2 AS pessoa_id, data FROM historico_carrinho
                 WHERE status = 'FECHADO' AND pessoa_id_2 IS NOT NULL
-        )
+        ) AS designacoes
         GROUP BY pessoa_id
         """
     ).fetchall()
@@ -56,7 +56,7 @@ def total_designacoes_por_pessoa(conn: sqlite3.Connection) -> dict[int, int]:
             UNION ALL
             SELECT pessoa_id_2 AS pessoa_id FROM historico_carrinho
                 WHERE status = 'FECHADO' AND pessoa_id_2 IS NOT NULL
-        )
+        ) AS designacoes
         GROUP BY pessoa_id
         """
     ).fetchall()

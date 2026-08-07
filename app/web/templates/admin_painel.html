@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ t('admin.painel') }}{% endblock %}
+
+{% block content %}
+<h1>{{ t('admin.painel') }}</h1>
+<p class="subtitulo">{{ t('admin.painel_subtitulo') }}</p>
+
+{% if not email_configurado %}
+<div class="painel-atencao">
+    <strong>{{ t('admin.sem_email_titulo') }}</strong>
+    <p>{{ t('admin.sem_email_texto') }}</p>
+</div>
+{% endif %}
+
+<div class="cartoes">
+    <a class="cartao" href="/admin/solicitacoes">
+        <span class="cartao-numero">{{ pendentes }}</span>
+        <span class="cartao-rotulo">{{ t('admin.solicitacoes_pendentes') }}</span>
+    </a>
+    <a class="cartao" href="/admin/usuarios">
+        <span class="cartao-numero">{{ congregacoes | length }}</span>
+        <span class="cartao-rotulo">{{ t('admin.congregacoes_que_administra') }}</span>
+    </a>
+    {% if sessao.usuario.super_admin %}
+    <a class="cartao" href="/admin/instalacao">
+        <span class="cartao-numero">{{ total_usuarios }}</span>
+        <span class="cartao-rotulo">{{ t('admin.pessoas_com_acesso') }}</span>
+    </a>
+    {% endif %}
+</div>
+
+{% if sessao.usuario.super_admin and base_url %}
+<h2>{{ t('admin.link_para_divulgar') }}</h2>
+<p>{{ t('admin.link_texto') }}</p>
+<p><code class="link-publico">{{ base_url }}/solicitar-acesso</code></p>
+{% endif %}
+{% endblock %}

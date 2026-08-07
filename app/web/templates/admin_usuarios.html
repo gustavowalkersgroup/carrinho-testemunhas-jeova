@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ t('admin.quem_tem_acesso') }}{% endblock %}
+
+{% block content %}
+<h1>{{ t('admin.quem_tem_acesso') }}</h1>
+<p class="subtitulo">{{ t('admin.usuarios_subtitulo') }}</p>
+
+{% if request.query_params.get('erro') == 'ultimo_admin' %}
+<div class="painel-erro">{{ t('admin.erro_ultimo_admin') }}</div>
+{% endif %}
+
+{% if congregacoes | length > 1 %}
+<form method="get" action="/admin/usuarios" class="acoes">
+    <label for="sel-congregacao">{{ t('admin.congregacao') }}</label>
+    <select id="sel-congregacao" name="congregacao_id" onchange="this.form.submit()">
+        {% for c in congregacoes %}
+        <option value="{{ c.id }}" {% if c.id == congregacao_id %}selected{% endif %}>{{ c.nome }}</option>
+        {% endfor %}
+    </select>
+    <noscript><button type="submit">{{ t('admin.ver') }}</button></noscript>
+</form>
+{% endif %}
+
+{% if not membros %}
+<p><em>{{ t('admin.ninguem_ainda') }}</em></p>
+{% else %}
+<table>
+    <thead>
+        <tr>
+            <th>{{ t('admin.pessoa') }}</th>
+            <th>{{ t('admin.perfil') }}</th>
+            <th>{{ t('admin.ultimo_acesso') }}</th>
+            <th>{{ t('admin.acoes') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for usuario, papel in membros %}
+        <tr>
+            <td>
+                <strong>{{ usuario.nome or usuario.email }}</strong><br>
+                <span class="texto-suave">{{ usuario.email }}</span>
+                {% if usuario.super_admin %}<span class="etiqueta-super">{{ t('admin.super_admin') }}</span>{% endif %}
+                {% if not usuario.ativo %}<span class="etiqueta-bloqueado">{{ t('admin.bloqueado') }}</span>{% endif %}
+            </td>
+            <td>
+                <form method="post" action="/admin/usuarios/papel" class="form-decisao">
+                    <input type="hidden" name="usuario_id" value="{{ usuario.id }}">
+                    <input type="hidden" name="congregacao_id" value="{{ congregacao_id }}">
+                    <select name="papel" onchange="this.form.submit()">
+                        {% for p in papeis %}
+                        <option value="{{ p.value }}" {% if p == papel %}selected{% endif %}>
+                            {{ t('admin.papel_' ~ p.value.lower()) }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <noscript><button type="submit">{{ t('admin.salvar') }}</button></noscript>
+                </form>
+            </td>
+            <td>{{ usuario.ultimo_acesso_em.strftime('%d/%m/%Y') if usuario.ultimo_acesso_em else '—' }}</td>
+            <td>
+                <form method="post" action="/admin/usuarios/remover" class="inline"
+                      onsubmit="return confirm('{{ t('admin.confirmar_remocao') }}');">
+                    <input type="hidden" name="usuario_id" value="{{ usuario.id }}">
+                    <input type="hidden" name="congregacao_id" value="{{ congregacao_id }}">
+                    <button type="submit" class="perigo">{{ t('admin.remover_acesso') }}</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<p class="ajuda">{{ t('admin.como_adicionar') }} <a href="/admin/solicitacoes">{{ t('admin.solicitacoes') }}</a></p>
+{% endblock %}

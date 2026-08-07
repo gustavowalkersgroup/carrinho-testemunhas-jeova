@@ -32,7 +32,8 @@ def listar_ativos_no_periodo(conn: sqlite3.Connection, inicio: date, fim: date) 
 
 def criar(conn: sqlite3.Connection, bloqueio: BloqueioIn) -> Bloqueio:
     cur = conn.execute(
-        "INSERT INTO bloqueios (data_inicio, data_fim, motivo, ativo) VALUES (?, ?, ?, ?)",
+        "INSERT INTO bloqueios (data_inicio, data_fim, motivo, ativo) VALUES (?, ?, ?, ?)"
+        " RETURNING bloqueio_id",
         (
             bloqueio.data_inicio.isoformat(),
             bloqueio.data_fim.isoformat(),
@@ -40,7 +41,7 @@ def criar(conn: sqlite3.Connection, bloqueio: BloqueioIn) -> Bloqueio:
             int(bloqueio.ativo),
         ),
     )
-    return Bloqueio(bloqueio_id=cur.lastrowid, **bloqueio.model_dump())
+    return Bloqueio(bloqueio_id=cur.fetchone()[0], **bloqueio.model_dump())
 
 
 def remover(conn: sqlite3.Connection, bloqueio_id: int) -> bool:

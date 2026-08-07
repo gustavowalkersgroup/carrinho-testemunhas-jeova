@@ -1,12 +1,85 @@
 import csv
 import sqlite3
 
-from app.config import SCHEMA_PATH, SEEDS_DIR
+from app import config
+from app.config import SCHEMA_PATH, SCHEMA_PG_PATH, SEEDS_DIR
 from app.db.connection import get_connection
 from app.repositories import configuracoes_repo
 
+# Sobe quando o schema muda de um jeito que exige reaplicar os arquivos .sql.
+# No modo WEB isso evita reexecutar o schema inteiro a cada cold start da
+# função serverless: uma consulta a `app_meta` resolve o caso comum.
+SCHEMA_VERSAO = "3"
+
+# Número arbitrário mas fixo: identifica o lock consultivo que serializa a
+# migração quando várias instâncias serverless sobem ao mesmo tempo.
+_LOCK_MIGRACAO = 8756_0001
+
 
 def run_migrations() -> None:
+    if config.MODO_WEB:
+        _migrar_postgres()
+    else:
+        _migrar_sqlite()
+
+
+# === Postgres (modo WEB) ====================================================
+
+def _migrar_postgres() -> None:
+    from app.db import postgres
+
+    with postgres.get_connection(super_admin=True) as conn:
+        if _schema_atualizado(conn):
+            return
+        # a partir daqui só uma instância por vez; o lock cai no commit
+        conn.travar(_LOCK_MIGRACAO)
+        if _schema_atualizado(conn):  # outra instância chegou antes e já migrou
+            return
+        with open(SCHEMA_PG_PATH, "r", encoding="utf-8") as f:
+            conn.executescript(f.read())
+        conn.execute(
+            """
+            INSERT INTO app_meta (chave, valor) VALUES ('schema_versao', ?)
+            ON CONFLICT (chave) DO UPDATE SET valor = excluded.valor
+            """,
+            (SCHEMA_VERSAO,),
+        )
+
+
+def _schema_atualizado(conn) -> bool:
+    if not conn.tabela_existe("app_meta"):
+        return False
+    row = conn.execute("SELECT valor FROM app_meta WHERE chave = 'schema_versao'").fetchone()
+    return row is not None and row["valor"] == SCHEMA_VERSAO
+
+
+def preparar_congregacao(conn, congregacao_id: int) -> None:
+    """Popula uma congregação recém-criada com os padrões de fábrica.
+
+    No desktop isso acontece na primeira execução (banco vazio); no modo WEB
+    precisa acontecer uma vez por congregação, senão a congregação nova nasce
+    sem nenhum horário e o assistente inicial não tem o que mostrar.
+
+    O modo super-admin é desligado enquanto as sementes rodam: as três funções
+    abaixo só semeiam quando a tabela está VAZIA, e com a visão global ligada
+    elas enxergariam as linhas das outras congregações e concluiriam que não há
+    nada a fazer — a congregação nova nasceria sem horário nenhum."""
+    congregacao_anterior = conn.congregacao_id
+    super_admin_anterior = conn.super_admin
+    conn.definir_super_admin(False)
+    conn.definir_congregacao(congregacao_id)
+    try:
+        _seed_slot_template_if_empty(conn)
+        _seed_saida_template_if_empty(conn)
+        _seed_configuracoes_padrao(conn)
+    finally:
+        conn.definir_congregacao(congregacao_anterior)
+        conn.definir_super_admin(super_admin_anterior)
+
+
+# === SQLite (modo LOCAL / desktop) ==========================================
+
+def _migrar_sqlite() -> None:
     with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
         schema_sql = f.read()
 
@@ -77,7 +150,9 @@ def _migrar_dirigentes_para_pessoas(conn: sqlite3.Connection) -> None:
             )
 
 
-def _seed_saida_template_if_empty(conn: sqlite3.Connection) -> None:
+# === Sementes compartilhadas ================================================
+
+def _seed_saida_template_if_empty(conn) -> None:
     """Default configurável: 1 saída de campo pela manhã, de segunda a sábado.
     O usuário ajusta na tela 'Saídas de Campo'."""
     if conn.execute("SELECT COUNT(*) FROM saida_campo_template").fetchone()[0] > 0:
@@ -100,7 +175,7 @@ def _seed_saida_template_if_empty(conn: sqlite3.Connection) -> None:
     )
 
 
-def _seed_slot_template_if_empty(conn: sqlite3.Connection) -> None:
+def _seed_slot_template_if_empty(conn) -> None:
     count = conn.execute("SELECT COUNT(*) FROM slot_template").fetchone()[0]
     if count > 0:
         return

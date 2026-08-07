@@ -32,7 +32,9 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    # psycopg só é usado no modo WEB (Postgres); o desktop roda em SQLite e
+    # nem chega a importá-lo — fora do bundle, o instalador não engorda à toa.
+    excludes=["psycopg", "psycopg_binary"],
     noarchive=False,
 )
 pyz = PYZ(a.pure)

@@ -19,10 +19,10 @@ def listar(conn: sqlite3.Connection, somente_ativos: bool = False) -> list[Dirig
 
 def criar(conn: sqlite3.Connection, dirigente: DirigenteIn) -> Dirigente:
     cur = conn.execute(
-        "INSERT INTO dirigentes (nome, ativo) VALUES (?, ?)",
+        "INSERT INTO dirigentes (nome, ativo) VALUES (?, ?) RETURNING id",
         (dirigente.nome, int(dirigente.ativo)),
     )
-    return Dirigente(id=cur.lastrowid, **dirigente.model_dump())
+    return Dirigente(id=cur.fetchone()[0], **dirigente.model_dump())
 
 
 def atualizar(conn: sqlite3.Connection, dirigente_id: int, dirigente: DirigenteIn) -> Optional[Dirigente]:
