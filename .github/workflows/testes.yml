@@ -1,0 +1,68 @@
+name: Testes
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  desktop:
+    name: Desktop (SQLite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: pytest tests -q
+
+  hospedado:
+    name: Hospedado (Postgres)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+
+      - name: Criar banco de teste com usuário comum
+        # SUPERUSER e BYPASSRLS passam por cima das políticas de isolamento.
+        # Rodar a suíte com o usuário padrão do Postgres faria os testes de
+        # vazamento entre congregações passarem sem testar coisa alguma.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -c \
+            "CREATE ROLE app_user LOGIN PASSWORD 'app' NOSUPERUSER NOBYPASSRLS;"
+          psql -h localhost -U postgres -c \
+            "CREATE DATABASE escala_test OWNER app_user;"
+
+      - name: Conferir que o usuário do teste não ignora RLS
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -tAc \
+            "SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname='app_user';" \
+            | grep -qx f
+
+      - name: Suíte do modo hospedado
+        env:
+          DATABASE_URL_TESTE: postgresql://app_user:app@localhost:5432/escala_test
+        run: pytest tests_web -q
