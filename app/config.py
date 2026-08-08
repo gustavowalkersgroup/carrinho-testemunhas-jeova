@@ -65,7 +65,33 @@ PORT = 8756
 # A chave é DATABASE_URL: existindo, é modo WEB. Assim o desktop continua
 # funcionando exatamente como antes, sem nenhuma variável de ambiente.
 
-DATABASE_URL = _env("DATABASE_URL") or _env("POSTGRES_URL")
+# A integração Neon da Vercel nem sempre expõe a variável como `DATABASE_URL`:
+# dependendo do prefixo escolhido na tela de Storage, o nome vira
+# `DATABASE_POSTGRES_URL`, `DATABASE_POSTGRES_PRISMA_URL` etc. Por isso
+# procuramos várias variações conhecidas, na ordem de preferência (pooler +
+# sslmode primeiro; sem pooler/sem SSL só como último recurso).
+_CANDIDATOS_DATABASE_URL = (
+    "DATABASE_URL",
+    "POSTGRES_URL",
+    "DATABASE_POSTGRES_URL",
+    "DATABASE_POSTGRES_PRISMA_URL",
+    "POSTGRES_PRISMA_URL",
+    "DATABASE_POSTGRES_URL_NON_POOLING",
+    "POSTGRES_URL_NON_POOLING",
+    "DATABASE_POSTGRES_URL_NO_SSL",
+    "POSTGRES_URL_NO_SSL",
+)
+
+
+def _resolver_database_url() -> str:
+    for nome in _CANDIDATOS_DATABASE_URL:
+        valor = _env(nome)
+        if valor:
+            return valor
+    return ""
+
+
+DATABASE_URL = _resolver_database_url()
 MODO_WEB = bool(DATABASE_URL)
 MODO_LOCAL = not MODO_WEB
 
