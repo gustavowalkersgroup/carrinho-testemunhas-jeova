@@ -1,0 +1,15 @@
+{% extends "base_publico.html" %}
+{% block title %}{{ t('acesso.sem_congregacao_titulo') }}{% endblock %}
+
+{% block content %}
+<div class="painel-atencao">
+    <h2>{{ t('acesso.sem_congregacao_titulo') }}</h2>
+    <p>{{ t('acesso.sem_congregacao_texto') }}</p>
+</div>
+
+<p class="ajuda"><a href="/solicitar-acesso">{{ t('acesso.solicitar') }}</a></p>
+
+<form method="post" action="/sair" class="form-secundario">
+    <button type="submit" class="secundario">{{ t('acesso.sair') }}</button>
+</form>
+{% endblock %}

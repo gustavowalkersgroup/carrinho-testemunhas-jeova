@@ -16,3 +16,9 @@ scripts/seed_dados_reais.py
 # copia de trabalho local do exe (rodada direto da pasta) e locks de sessao
 /EscalaCarrinho.exe
 .claude/scheduled_tasks.lock
+
+# variaveis de ambiente do modo web -- nunca versionar (use .env.example)
+.env
+.env.*
+!.env.example
+.vercel/

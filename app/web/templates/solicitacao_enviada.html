@@ -1,0 +1,18 @@
+{% extends "base_publico.html" %}
+{% block title %}{{ t('acesso.solicitacao_enviada') }}{% endblock %}
+
+{% block content %}
+<div class="painel-sucesso">
+    <span class="cartao-icone" aria-hidden="true">✅</span>
+    <h2>{% if ja_pendente %}{{ t('acesso.ja_pendente_titulo') }}{% else %}{{ t('acesso.solicitacao_enviada') }}{% endif %}</h2>
+    <p>
+        {% if ja_pendente %}
+            {{ t('acesso.ja_pendente_texto', email=email) }}
+        {% else %}
+            {{ t('acesso.solicitacao_texto', email=email) }}
+        {% endif %}
+    </p>
+</div>
+
+<p class="ajuda"><a href="/entrar">{{ t('acesso.voltar_entrar') }}</a></p>
+{% endblock %}

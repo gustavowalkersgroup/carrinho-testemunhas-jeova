@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ t('admin.solicitacoes') }}{% endblock %}
+
+{% block content %}
+<h1>{{ t('admin.solicitacoes') }}</h1>
+<p class="subtitulo">{{ t('admin.solicitacoes_subtitulo') }}</p>
+
+{% if request.query_params.get('erro') %}
+<div class="painel-erro">{{ request.query_params.get('erro') }}</div>
+{% endif %}
+
+<div class="acoes">
+    {% for estado in ['PENDENTE', 'APROVADA', 'RECUSADA'] %}
+    <a class="btn {% if status_atual != estado %}secundario{% endif %}"
+       href="/admin/solicitacoes?status={{ estado }}">{{ t('admin.status_' ~ estado.lower()) }}</a>
+    {% endfor %}
+</div>
+
+{% if not solicitacoes %}
+<p><em>{{ t('admin.nenhuma_solicitacao') }}</em></p>
+{% else %}
+<table>
+    <thead>
+        <tr>
+            <th>{{ t('admin.quem') }}</th>
+            <th>{{ t('admin.congregacao') }}</th>
+            <th>{{ t('admin.quando') }}</th>
+            {% if status_atual == 'PENDENTE' %}<th>{{ t('admin.decisao') }}</th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+    {% for s in solicitacoes %}
+        <tr>
+            <td>
+                <strong>{{ s.nome or s.email }}</strong><br>
+                <span class="texto-suave">{{ s.email }}</span>
+                {% if s.mensagem %}<br><em>“{{ s.mensagem }}”</em>{% endif %}
+            </td>
+            <td>
+                {% if s.congregacao_id %}
+                    {{ s.congregacao_nome }}
+                {% else %}
+                    <span class="etiqueta-nova">{{ t('admin.congregacao_nova') }}</span><br>
+                    {{ s.congregacao_nome_sugerida }}
+                {% endif %}
+            </td>
+            <td>{{ s.criada_em.strftime('%d/%m/%Y %H:%M') if s.criada_em else '' }}</td>
+            {% if status_atual == 'PENDENTE' %}
+            <td class="celula-decisao">
+                {% if s.congregacao_id or pode_criar_congregacao %}
+                <form method="post" action="/admin/solicitacoes/{{ s.id }}/aprovar" class="form-decisao">
+                    {% if s.congregacao_id %}
+                    <select name="papel" aria-label="{{ t('admin.perfil') }}">
+                        {% for p in papeis %}
+                        <option value="{{ p.value }}" {% if p.value == 'EDITOR' %}selected{% endif %}>
+                            {{ t('admin.papel_' ~ p.value.lower()) }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% else %}
+                    <span class="texto-suave">{{ t('admin.vira_admin_da_nova') }}</span>
+                    {% endif %}
+                    <button type="submit">{{ t('admin.aprovar') }}</button>
+                </form>
+                <form method="post" action="/admin/solicitacoes/{{ s.id }}/recusar" class="form-decisao">
+                    <input type="text" name="observacao" placeholder="{{ t('admin.motivo_opcional') }}" maxlength="200">
+                    <button type="submit" class="perigo">{{ t('admin.recusar') }}</button>
+                </form>
+                {% else %}
+                <span class="texto-suave">{{ t('admin.so_super_admin_decide') }}</span>
+                {% endif %}
+            </td>
+            {% endif %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

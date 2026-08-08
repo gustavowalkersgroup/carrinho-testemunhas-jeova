@@ -1,5 +1,6 @@
 import sqlite3
 from contextlib import contextmanager
+from typing import Optional
 
 from app import config
 
@@ -23,7 +24,24 @@ def _connect() -> sqlite3.Connection:
 
 
 @contextmanager
-def get_connection():
+def get_connection(congregacao_id: Optional[int] = None, super_admin: bool = False):
+    """Conexão para a congregação informada.
+
+    Modo WEB (Postgres): `congregacao_id` define o que a transação enxerga —
+    o isolamento é imposto por Row Level Security, então passar `None` faz
+    toda consulta às tabelas da congregação voltar vazia (falha fechando).
+
+    Modo LOCAL (SQLite, desktop): o banco inteiro é de uma congregação só,
+    logo os dois argumentos são ignorados."""
+    if config.MODO_WEB:
+        # importado aqui e não no topo: psycopg só é dependência do modo WEB,
+        # e o executável de desktop não deve exigi-lo instalado.
+        from app.db import postgres
+
+        with postgres.get_connection(congregacao_id, super_admin) as conn:
+            yield conn
+        return
+
     conn = _connect()
     try:
         yield conn

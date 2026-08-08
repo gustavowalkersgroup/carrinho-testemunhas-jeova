@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="{{ idioma_atual }}" dir="{{ 'rtl' if rtl else 'ltr' }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ t('app.titulo') }}{% endblock %}</title>
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="fundo-acesso">
+    <main class="cartao-acesso">
+        <div class="cartao-topo">
+            <span class="cartao-icone" aria-hidden="true">🛒</span>
+            <h1>{{ t('app.titulo') }}</h1>
+            <p class="subtitulo">{{ t('acesso.subtitulo') }}</p>
+        </div>
+
+        {% if erro %}<div class="painel-erro">{{ erro }}</div>{% endif %}
+        {% if aviso %}<div class="flash">{{ aviso }}</div>{% endif %}
+
+        {% block content %}{% endblock %}
+
+        <form method="post" action="/idioma" class="rodape-idioma">
+            <input type="hidden" name="destino" value="{{ request.url.path }}">
+            <label for="idioma-publico">{{ t('config.idioma') }}</label>
+            <select id="idioma-publico" name="idioma" onchange="this.form.submit()">
+                {% for codigo, nome in idiomas_disponiveis.items() %}
+                <option value="{{ codigo }}" {% if codigo == idioma_atual %}selected{% endif %}>{{ nome }}</option>
+                {% endfor %}
+            </select>
+            <noscript><button type="submit">OK</button></noscript>
+        </form>
+    </main>
+</body>
+</html>

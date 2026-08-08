@@ -1,0 +1,50 @@
+{% extends "base_publico.html" %}
+{% block title %}{{ t('acesso.entrar') }}{% endblock %}
+
+{% block content %}
+{% if etapa == 'codigo' %}
+
+    {% if codigo_visivel %}
+    <div class="painel-atencao">
+        <strong>{{ t('acesso.sem_provedor_titulo') }}</strong>
+        <p>{{ t('acesso.sem_provedor_texto') }}</p>
+        <p class="codigo-destaque">{{ codigo_visivel }}</p>
+    </div>
+    {% endif %}
+
+    <p>{{ t('acesso.codigo_enviado', email=email) }}</p>
+
+    <form method="post" action="/entrar/codigo" class="form-box">
+        <input type="hidden" name="email" value="{{ email }}">
+        <label for="codigo">{{ t('acesso.codigo') }}</label>
+        <input type="text" id="codigo" name="codigo" inputmode="numeric" autocomplete="one-time-code"
+               pattern="[0-9]*" maxlength="6" required autofocus class="campo-codigo"
+               placeholder="000000">
+        <button type="submit">{{ t('acesso.confirmar') }}</button>
+    </form>
+
+    <form method="post" action="/entrar" class="form-secundario">
+        <input type="hidden" name="email" value="{{ email }}">
+        <button type="submit" class="secundario">{{ t('acesso.reenviar') }}</button>
+    </form>
+
+    <p class="ajuda"><a href="/entrar">{{ t('acesso.usar_outro_email') }}</a></p>
+
+{% else %}
+
+    <p>{{ t('acesso.explique_login') }}</p>
+
+    <form method="post" action="/entrar" class="form-box">
+        <label for="email">{{ t('acesso.email') }}</label>
+        <input type="email" id="email" name="email" value="{{ email or '' }}" required autofocus
+               autocomplete="email" placeholder="voce@exemplo.com">
+        <button type="submit">{{ t('acesso.receber_codigo') }}</button>
+    </form>
+
+    <p class="ajuda">
+        {{ t('acesso.ainda_sem_acesso') }}
+        <a href="/solicitar-acesso">{{ t('acesso.solicitar') }}</a>
+    </p>
+
+{% endif %}
+{% endblock %}

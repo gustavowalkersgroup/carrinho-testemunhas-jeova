@@ -1,0 +1,11 @@
+{% extends "base_publico.html" %}
+{% block title %}{{ t('acesso.sem_permissao_titulo') }}{% endblock %}
+
+{% block content %}
+<div class="painel-erro">
+    <h2>{{ t('acesso.sem_permissao_titulo') }}</h2>
+    <p>{{ detalhe or t('acesso.sem_permissao_texto') }}</p>
+</div>
+
+<p class="ajuda"><a href="/escala">{{ t('acesso.voltar_escala') }}</a></p>
+{% endblock %}

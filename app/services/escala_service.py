@@ -3,9 +3,10 @@ from calendar import monthrange
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
+from uuid import uuid4
 
-from app import i18n
-from app.config import ESCALAS_DIR, JANELA_MESES_EVITAR_REPETIR_DUPLA
+from app import config, i18n
+from app.config import JANELA_MESES_EVITAR_REPETIR_DUPLA
 from app.engine import validators
 from app.engine.calendar_utils import gerar_instancias, gerar_instancias_saida
 from app.engine.sorteio import ContextoSorteio, gerar_escala, gerar_saidas
@@ -144,6 +145,10 @@ class DadosPdf:
     designacoes_saidas: list = field(default_factory=list)
     # saida_id -> label 'DiaSemana - Periodo [- local]'
     saidas_por_id: dict[str, str] = field(default_factory=dict)
+    # Nome que o navegador deve mostrar no download. Separado de `caminho`
+    # porque no modo hospedado o arquivo em disco leva um sufixo aleatório
+    # (ver montar_dados_pdf) que não deve aparecer para o usuário.
+    nome_arquivo: str = ""
 
 
 def montar_dados_pdf(conn: sqlite3.Connection, ano: int, mes: int) -> DadosPdf:
@@ -173,10 +178,23 @@ def montar_dados_pdf(conn: sqlite3.Connection, ano: int, mes: int) -> DadosPdf:
             label += f" - {s.local}"
         saidas_por_id[s.saida_id] = label
 
-    caminho = ESCALAS_DIR / f"CARRINHO_{mes_referencia}.pdf"
+    config.ensure_dirs()
+    nome_arquivo = f"CARRINHO_{mes_referencia}.pdf"
+    if config.MODO_WEB:
+        # Nome único por pedido. A mesma instância serverless atende
+        # congregações diferentes e fica viva entre requests: com nome fixo,
+        # dois pedidos do mesmo mês escreveriam no mesmo arquivo e um baixaria
+        # o PDF do outro — vazamento entre congregações. O arquivo é apagado
+        # depois do envio (ver as rotas de exportação).
+        caminho = config.ESCALAS_DIR / f"{uuid4().hex}_{nome_arquivo}"
+    else:
+        # No desktop o nome previsível é uma funcionalidade: o usuário acha o
+        # PDF na pasta ao lado do programa.
+        caminho = config.ESCALAS_DIR / nome_arquivo
 
     return DadosPdf(
         mes_referencia=mes_referencia,
+        nome_arquivo=nome_arquivo,
         designacoes=escala.designacoes,
         designacoes_dirigentes=escala.designacoes_dirigentes,
         slots=slots,
