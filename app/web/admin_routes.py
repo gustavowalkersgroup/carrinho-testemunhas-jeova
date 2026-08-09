@@ -15,7 +15,7 @@ agir, e logo em seguida é conferido contra o que a sessão permite.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from app import config
 from app.auth import repo, service
@@ -274,6 +274,45 @@ def instalacao(
         base_url=config.APP_BASE_URL,
         super_admins_env=config.SUPER_ADMIN_EMAILS,
     )
+
+
+# ROTA TEMPORÁRIA: popula a congregação selecionada a partir de um histórico
+# de designações. De propósito SEM dado de nenhuma pessoa no código: quem
+# chama manda o histórico no corpo da requisição (ver
+# app/services/importacao_historico.py e o .gitignore de
+# `scripts/seed_dados_reais.py` para o motivo de não versionar dados reais).
+# Remover depois de usar.
+@router.post("/importar-historico")
+async def importar_historico_route(request: Request, sessao: SessaoAtual = Depends(exigir_super_admin)):
+    if sessao.congregacao is None:
+        return PlainTextResponse(
+            "Escolha uma congregação no seletor no topo da tela antes de importar.",
+            status_code=400,
+        )
+
+    from datetime import date
+
+    from app.db.connection import get_connection
+    from app.services import importacao_historico
+
+    corpo = await request.json()
+    vigencia = corpo.get("vigencia_inicio_fixos")
+    if vigencia:
+        vigencia = date.fromisoformat(vigencia)
+
+    with get_connection(congregacao_id=sessao.congregacao.id) as conn:
+        relatorio = importacao_historico.importar_historico(
+            conn,
+            historico=corpo["historico"],
+            genero=corpo["genero"],
+            genero_incerto=corpo.get("genero_incerto"),
+            dirigentes_pool=corpo.get("dirigentes_pool"),
+            fixo_fracao_minima=corpo.get("fixo_fracao_minima", importacao_historico.FIXO_FRACAO_MINIMA_PADRAO),
+            fixo_meses_minimos=corpo.get("fixo_meses_minimos", importacao_historico.FIXO_MESES_MINIMOS_PADRAO),
+            vigencia_inicio_fixos=vigencia,
+            mes_limite_inativos=corpo.get("mes_limite_inativos"),
+        )
+    return PlainTextResponse(importacao_historico.formatar_relatorio(relatorio))
 
 
 @router.post("/congregacoes/criar")
