@@ -59,6 +59,11 @@ def _enviar_resend(destinatario: str, assunto: str, texto: str, html: str) -> No
         headers={
             "Authorization": f"Bearer {config.RESEND_API_KEY}",
             "Content-Type": "application/json",
+            "Accept": "application/json",
+            # Sem isto, o urllib manda "Python-urllib/x.y" como User-Agent e o
+            # Cloudflare na frente da API do Resend bloqueia com "error code:
+            # 1010" (assinatura de bot) antes mesmo de chegar no Resend.
+            "User-Agent": "escala-do-carrinho/1.0 (+https://github.com/gustavowalkersgroup/carrinho-testemunhas-jeova)",
         },
         method="POST",
     )
