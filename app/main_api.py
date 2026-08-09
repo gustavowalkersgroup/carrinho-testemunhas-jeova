@@ -82,6 +82,20 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="Escala do Carrinho")
 
+    # DIAGNÓSTICO TEMPORÁRIO: descobrir o que a Vercel entrega como path real
+    # dentro do ASGI scope quando o rewrite `/(.*) -> /api/index` encaminha a
+    # requisição. Remover depois de identificar a causa do 404 em produção.
+    @app.get("/__diag")
+    async def _diag(request: Request):
+        return {
+            "url_path": request.url.path,
+            "scope_path": request.scope.get("path"),
+            "scope_raw_path": request.scope.get("raw_path"),
+            "root_path": request.scope.get("root_path"),
+            "query_string": request.scope.get("query_string"),
+            "headers": dict(request.headers),
+        }
+
     if config.MODO_WEB and not config.SECRET_KEY:
         logger.warning(
             "SECRET_KEY não definida: as sessões cairão a cada instância nova. "
@@ -151,6 +165,21 @@ def create_app() -> FastAPI:
                     return PlainTextResponse(
                         "Origem nao permitida (possivel CSRF).", status_code=403
                     )
+        return await call_next(request)
+
+    # DIAGNÓSTICO TEMPORÁRIO: adicionado DEPOIS, então roda ANTES de tudo (o
+    # Starlette empilha middlewares em ordem reversa). Intercepta mesmo que o
+    # roteamento normal nunca chegue a bater com nenhuma rota.
+    @app.middleware("http")
+    async def _diag_middleware(request: Request, call_next):
+        if request.query_params.get("__diag") == "1":
+            return JSONResponse({
+                "url_path": request.url.path,
+                "scope_path": request.scope.get("path"),
+                "root_path": request.scope.get("root_path"),
+                "method": request.method,
+                "headers": dict(request.headers),
+            })
         return await call_next(request)
 
     return app
