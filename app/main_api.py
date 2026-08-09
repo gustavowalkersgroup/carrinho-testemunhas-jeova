@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import config
-from app.api import bloqueios, dirigentes, disponibilidades, escalas, fixos, pessoas, saidas, slots
+from app.api import automacao, bloqueios, dirigentes, disponibilidades, escalas, fixos, pessoas, saidas, slots
 from app.auth import service as auth_service
 from app.auth.deps import (
     PrecisaEntrar,
@@ -120,6 +120,10 @@ def create_app() -> _RestaurarPathOriginalDaVercel:
 
     # Rotas públicas (entrar, solicitar acesso): sem exigência de sessão.
     app.include_router(auth_router)
+
+    # API de automação (n8n, scripts): guarda própria por API key, não por
+    # sessão -- ver app/api/automacao.py.
+    app.include_router(automacao.router)
 
     # Rotas de domínio: uma única guarda para todas. Ler exige pertencer à
     # congregação; escrever exige perfil de edição (ver auth/deps.exigir_acesso).
