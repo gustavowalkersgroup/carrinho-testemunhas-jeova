@@ -1,5 +1,5 @@
 import logging
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
@@ -73,7 +73,37 @@ def _quer_json(request: Request) -> bool:
     return "application/json" in (request.headers.get("accept") or "")
 
 
-def create_app() -> FastAPI:
+class _RestaurarPathOriginalDaVercel:
+    """No runtime Python da Vercel, o rewrite `/(.*) -> /api/index` (ver
+    vercel.json) entrega ao ASGI scope o path de DESTINO (`/api/index`), não
+    o path que o navegador pediu — todo request vira 404 porque nenhuma rota
+    bate com `/api/index`. Por isso o rewrite repassa o path real na query
+    string (`__original_path`); aqui ele volta para `scope["path"]` antes do
+    roteamento. Fora da Vercel (dev local, testes) o parâmetro nunca aparece
+    e esta camada não faz nada."""
+
+    def __init__(self, app):
+        self._app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            pares = parse_qsl(scope.get("query_string", b"").decode("latin-1"), keep_blank_values=True)
+            caminho_original = None
+            restantes = []
+            for chave, valor in pares:
+                if chave == "__original_path" and caminho_original is None:
+                    caminho_original = valor or "/"
+                else:
+                    restantes.append((chave, valor))
+            if caminho_original is not None:
+                scope = dict(scope)
+                scope["path"] = caminho_original
+                scope["raw_path"] = caminho_original.encode("utf-8")
+                scope["query_string"] = urlencode(restantes).encode("latin-1")
+        await self._app(scope, receive, send)
+
+
+def create_app() -> _RestaurarPathOriginalDaVercel:
     if config.MODO_LOCAL:
         # No desktop a migração pode rodar já: é um SQLite local, instantâneo.
         # No modo WEB fica para o primeiro request, para que um banco fora do ar
@@ -81,20 +111,6 @@ def create_app() -> FastAPI:
         _garantir_migracao()
 
     app = FastAPI(title="Escala do Carrinho")
-
-    # DIAGNÓSTICO TEMPORÁRIO: descobrir o que a Vercel entrega como path real
-    # dentro do ASGI scope quando o rewrite `/(.*) -> /api/index` encaminha a
-    # requisição. Remover depois de identificar a causa do 404 em produção.
-    @app.get("/__diag")
-    async def _diag(request: Request):
-        return {
-            "url_path": request.url.path,
-            "scope_path": request.scope.get("path"),
-            "scope_raw_path": request.scope.get("raw_path"),
-            "root_path": request.scope.get("root_path"),
-            "query_string": request.scope.get("query_string"),
-            "headers": dict(request.headers),
-        }
 
     if config.MODO_WEB and not config.SECRET_KEY:
         logger.warning(
@@ -167,19 +183,4 @@ def create_app() -> FastAPI:
                     )
         return await call_next(request)
 
-    # DIAGNÓSTICO TEMPORÁRIO: adicionado DEPOIS, então roda ANTES de tudo (o
-    # Starlette empilha middlewares em ordem reversa). Intercepta mesmo que o
-    # roteamento normal nunca chegue a bater com nenhuma rota.
-    @app.middleware("http")
-    async def _diag_middleware(request: Request, call_next):
-        if request.query_params.get("__diag") == "1":
-            return JSONResponse({
-                "url_path": request.url.path,
-                "scope_path": request.scope.get("path"),
-                "root_path": request.scope.get("root_path"),
-                "method": request.method,
-                "headers": dict(request.headers),
-            })
-        return await call_next(request)
-
-    return app
+    return _RestaurarPathOriginalDaVercel(app)
