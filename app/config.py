@@ -126,6 +126,12 @@ SUPER_ADMIN_EMAILS = [
 # main_api avisa em log quando isso acontece no modo WEB.
 SECRET_KEY = _env("SECRET_KEY")
 
+# Autentica integrações externas (n8n, scripts de automação) na API em
+# /api/automacao/*, que não passa por login por e-mail — não faz sentido uma
+# automação "receber um código de 6 dígitos". Sem valor definido, a API de
+# automação fica desligada (nunca aberta por acidente sem chave).
+AUTOMACAO_API_KEY = _env("AUTOMACAO_API_KEY")
+
 SESSAO_COOKIE = "escala_sessao"
 SESSAO_DURACAO_DIAS = 30
 # Validade do código de 6 dígitos enviado por e-mail.

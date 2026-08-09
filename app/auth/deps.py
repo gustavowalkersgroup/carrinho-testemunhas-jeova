@@ -12,9 +12,10 @@ qual congregação ela pode mexer.
 
 from __future__ import annotations
 
+import hmac
 from typing import Optional
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, HTTPException, Request
 
 from app import config
 from app.auth import service
@@ -110,6 +111,18 @@ def exigir_super_admin(sessao: SessaoAtual = Depends(exigir_sessao)) -> SessaoAt
     if not sessao.usuario.super_admin:
         raise SemPermissao("Só o administrador da instalação pode fazer isso.")
     return sessao
+
+
+def exigir_api_key(x_api_key: str | None = Header(default=None, alias="X-Api-Key")) -> None:
+    """Guarda de /api/automacao/*: chave fixa em vez de sessão de navegador.
+
+    Automações (n8n, scripts) não têm como passar pelo login por código de
+    e-mail. Sem AUTOMACAO_API_KEY configurada a API fica sempre fechada —
+    nunca abre "sem querer" por falta de configuração."""
+    if not config.AUTOMACAO_API_KEY:
+        raise HTTPException(503, "API de automação não configurada (falta AUTOMACAO_API_KEY).")
+    if not x_api_key or not hmac.compare_digest(x_api_key, config.AUTOMACAO_API_KEY):
+        raise HTTPException(401, "Chave de API ausente ou inválida (header X-Api-Key).")
 
 
 def get_conn(conn=Depends(_conexao_do_request), _s=Depends(sessao_atual)):
