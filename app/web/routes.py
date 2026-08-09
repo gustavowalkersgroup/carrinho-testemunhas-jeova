@@ -127,7 +127,18 @@ def home(conn=Depends(get_conn)):
 
 
 @router.get("/escala")
-def pagina_escala(request: Request, ano: int, mes: int, erro: str | None = None, conn=Depends(get_conn)):
+def pagina_escala(
+    request: Request,
+    ano: int | None = None,
+    mes: int | None = None,
+    erro: str | None = None,
+    conn=Depends(get_conn),
+):
+    # Sem ano/mes na URL (ex.: o link do menu, que não carrega parâmetros),
+    # cai no mês atual — igual ao redirect da home.
+    hoje = date.today()
+    ano = ano or hoje.year
+    mes = mes or hoje.month
     idioma = _idioma_atual(conn)
     mes_referencia = escala_service.mes_referencia_str(ano, mes)
     escala = escala_service.obter_escala(conn, mes_referencia)
