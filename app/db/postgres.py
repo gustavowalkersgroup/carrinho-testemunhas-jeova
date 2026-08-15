@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import re
 from contextlib import contextmanager
+from datetime import date, datetime
 from typing import Any, Iterable, Optional, Sequence
 
 import psycopg
@@ -41,6 +42,25 @@ def _traduzir_marcadores(sql: str) -> str:
     Também escapa `%` literal, que em psycopg é o início de um marcador."""
     sql = sql.replace("%", "%%")
     return _PLACEHOLDER.sub(lambda m: "%s" if m.group(0) == "?" else m.group(0), sql)
+
+
+def _normalizar_parametro(valor: Any) -> Any:
+    """As colunas de data/hora do schema são TEXT (mesmo formato ISO do
+    SQLite), não DATE/TIMESTAMP nativos do Postgres -- schema unificado com o
+    desktop de propósito. sqlite3 aceita um `datetime.date` direto (converte
+    pra string sozinho); o psycopg manda como tipo nativo DATE, e comparar
+    esse tipo com uma coluna TEXT falha com "operator does not exist: text >=
+    date". Convertendo aqui, ANTES do parâmetro chegar no psycopg, os dois
+    bancos recebem a mesma string ISO -- sem precisar tocar em cada rota."""
+    if isinstance(valor, datetime):
+        return valor.isoformat(sep=" ")
+    if isinstance(valor, date):
+        return valor.isoformat()
+    return valor
+
+
+def _normalizar_parametros(params: Iterable[Any]) -> tuple:
+    return tuple(_normalizar_parametro(v) for v in params)
 
 
 class Row(Sequence):
@@ -96,11 +116,11 @@ class Conexao:
 
     def execute(self, sql: str, params: Iterable[Any] = ()):
         cur = self._conn.cursor(row_factory=_fabrica_de_linhas)
-        cur.execute(_traduzir_marcadores(sql), tuple(params))
+        cur.execute(_traduzir_marcadores(sql), _normalizar_parametros(params))
         return cur
 
     def executemany(self, sql: str, seq_params: Iterable[Sequence[Any]]):
-        linhas = [tuple(p) for p in seq_params]
+        linhas = [_normalizar_parametros(p) for p in seq_params]
         cur = self._conn.cursor(row_factory=_fabrica_de_linhas)
         if linhas:
             cur.executemany(_traduzir_marcadores(sql), linhas)
