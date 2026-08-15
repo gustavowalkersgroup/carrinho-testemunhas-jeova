@@ -124,6 +124,7 @@ def create_app() -> _RestaurarPathOriginalDaVercel:
     # API de automação (n8n, scripts): guarda própria por API key, não por
     # sessão -- ver app/api/automacao.py.
     app.include_router(automacao.router)
+    app.include_router(automacao.router_cron)
 
     # Rotas de domínio: uma única guarda para todas. Ler exige pertencer à
     # congregação; escrever exige perfil de edição (ver auth/deps.exigir_acesso).

@@ -66,6 +66,7 @@ TRADUCOES: dict[str, dict[str, str]] = {
         "acesso.usar_outro_email": "Usar outro e-mail",
         "acesso.ainda_sem_acesso": "Ainda não tem acesso?",
         "acesso.solicitar": "Solicitar acesso",
+        "acesso.ver_demonstracao": "Quer conhecer o sistema antes? Veja uma demonstração",
         "acesso.trocar_congregacao": "Trocar de congregação",
         "acesso.trocar": "Trocar",
         "acesso.erro_email_vazio": "Informe um e-mail.",
@@ -184,6 +185,9 @@ TRADUCOES: dict[str, dict[str, str]] = {
         "nav.bloqueios": "Bloqueios",
         "nav.configuracoes": "Configurações",
         "nav.importar_historico": "Importar histórico",
+        "demo.faixa_texto": "Modo demonstração — dados fictícios, reiniciados todo dia.",
+        "demo.reiniciar": "Reiniciar agora",
+        "demo.entrar_de_verdade": "Entrar com sua conta",
 
         # --- termos comuns ---------------------------------------------------
         "comum.salvar": "Salvar",

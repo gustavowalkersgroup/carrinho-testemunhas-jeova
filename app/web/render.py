@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 
 from app import config, i18n
 from app.repositories import configuracoes_repo
+from app.services import demo_service
 
 templates = Jinja2Templates(directory=str(config.TEMPLATES_DIR))
 
@@ -55,6 +56,9 @@ def render(
     contexto["idiomas_disponiveis"] = i18n.IDIOMAS
     contexto["sessao"] = sessao
     contexto["modo_web"] = config.MODO_WEB
+    contexto["em_modo_demo"] = bool(
+        sessao and sessao.congregacao and sessao.congregacao.slug == demo_service.SLUG_CONGREGACAO_DEMO
+    )
 
     if "nome_congregacao" not in contexto:
         nome = ""

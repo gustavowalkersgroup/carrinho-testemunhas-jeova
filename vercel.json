@@ -8,5 +8,8 @@
   },
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/index?__original_path=/$1" }
+  ],
+  "crons": [
+    { "path": "/api/automacao/resetar-demo", "schedule": "0 4 * * *" }
   ]
 }
