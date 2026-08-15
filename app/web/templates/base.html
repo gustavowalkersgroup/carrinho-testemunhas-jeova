@@ -40,6 +40,9 @@
             <a href="/dirigentes"><span class="nav-icone">🧭</span> {{ t('nav.dirigentes') }}</a>
             <a href="/bloqueios"><span class="nav-icone">🚫</span> {{ t('nav.bloqueios') }}</a>
             <a href="/configuracoes"><span class="nav-icone">⚙️</span> {{ t('nav.configuracoes') }}</a>
+            {% if modo_web and sessao and sessao.pode_editar %}
+            <a href="/admin/importar-historico"><span class="nav-icone">📥</span> {{ t('nav.importar_historico') }}</a>
+            {% endif %}
             {% if modo_web and sessao and sessao.pode_administrar_congregacao %}
             <a href="/admin"><span class="nav-icone">🛡️</span> {{ t('nav.admin') }}</a>
             {% endif %}

@@ -15,9 +15,10 @@ agir, e logo em seguida é conferido contra o que a sessão permite.
 from __future__ import annotations
 
 import json
+from datetime import date
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 
 from app import config
 from app.auth import repo, service
@@ -25,12 +26,14 @@ from app.auth.deps import (
     SemPermissao,
     _conexao_do_request,
     congregacoes_que_administra,
+    exigir_edicao,
     exigir_sessao,
     exigir_super_admin,
     sessao_atual,
 )
 from app.auth.models import Papel, SessaoAtual, StatusSolicitacao
 from app.db.migrations import preparar_congregacao
+from app.services import importacao_historico
 from app.web.render import render
 
 router = APIRouter(prefix="/admin")
@@ -278,64 +281,61 @@ def instalacao(
     )
 
 
-# ROTA TEMPORÁRIA: formulário simples pra colar um histórico de designações
-# (JSON, ver app/services/importacao_historico.py) e importar sem precisar
-# de terminal nem DevTools -- feito pra funcionar direto no celular. Chama a
-# própria API de automação (X-Api-Key), embutida aqui porque quem vê esta
-# página já provou ser super-admin. Remover depois de usar.
-@router.get("/importar-historico", response_class=HTMLResponse)
-def importar_historico_form(sessao: SessaoAtual = Depends(exigir_super_admin)):
-    congregacao_id_padrao = sessao.congregacao.id if sessao.congregacao else None
-    api_key_disponivel = bool(config.AUTOMACAO_API_KEY)
+# Importa um histórico de designações (JSON) para a congregação da sessão
+# atual: cadastra pessoas, disponibilidades e fixos de uma vez. Ver
+# app/services/importacao_historico.py — mesma guarda de quem pode editar a
+# escala (Editor ou Admin da congregação), não só super-admin.
+@router.get("/importar-historico")
+def importar_historico_form(
+    request: Request,
+    conn=Depends(_conexao_do_request),
+    sessao: SessaoAtual = Depends(exigir_edicao),
+):
+    return render("admin_importar_historico.html", request, conn)
 
-    return f"""<!doctype html>
-<html lang="pt-BR"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Importar histórico</title>
-<style>
-  body {{ font-family: system-ui, sans-serif; max-width: 640px; margin: 16px auto; padding: 0 12px; }}
-  textarea {{ width: 100%; height: 40vh; font-family: monospace; font-size: 12px; box-sizing: border-box; }}
-  input {{ font-size: 16px; padding: 8px; width: 100%; box-sizing: border-box; margin-bottom: 8px; }}
-  button {{ padding: 12px 20px; font-size: 16px; margin-top: 8px; }}
-  pre {{ white-space: pre-wrap; word-break: break-word; background: #f4f4f4; padding: 10px; border-radius: 6px; }}
-  label {{ font-weight: bold; display: block; margin-top: 12px; }}
-</style>
-</head>
-<body>
-<h2>Importar histórico de designações</h2>
-{"" if api_key_disponivel else "<p style='color:red'><b>AUTOMACAO_API_KEY não configurada nas variáveis de ambiente.</b></p>"}
 
-<label>ID da congregação</label>
-<input id="congregacao_id" type="number" value="{congregacao_id_padrao if congregacao_id_padrao is not None else ''}">
+@router.post("/importar-historico")
+async def importar_historico_submit(
+    request: Request,
+    conn=Depends(_conexao_do_request),
+    sessao: SessaoAtual = Depends(exigir_edicao),
+):
+    form = await request.form()
+    payload_texto = str(form.get("payload", ""))
 
-<label>Cole aqui o JSON do histórico</label>
-<textarea id="payload" placeholder='{{"historico": [...], "genero": {{...}}, ...}}'></textarea>
+    try:
+        dados = json.loads(payload_texto)
+    except json.JSONDecodeError as e:
+        return render(
+            "admin_importar_historico.html", request, conn,
+            status_code=400, erro=f"JSON inválido: {e}", payload_texto=payload_texto,
+        )
 
-<button onclick="importar()">Importar</button>
+    vigencia = dados.get("vigencia_inicio_fixos")
+    try:
+        if vigencia:
+            vigencia = date.fromisoformat(vigencia)
+        relatorio = importacao_historico.importar_historico(
+            conn,
+            historico=dados["historico"],
+            genero=dados["genero"],
+            genero_incerto=dados.get("genero_incerto"),
+            dirigentes_pool=dados.get("dirigentes_pool"),
+            fixo_fracao_minima=dados.get("fixo_fracao_minima", importacao_historico.FIXO_FRACAO_MINIMA_PADRAO),
+            fixo_meses_minimos=dados.get("fixo_meses_minimos", importacao_historico.FIXO_MESES_MINIMOS_PADRAO),
+            vigencia_inicio_fixos=vigencia,
+            mes_limite_inativos=dados.get("mes_limite_inativos"),
+        )
+    except (KeyError, ValueError, TypeError) as e:
+        return render(
+            "admin_importar_historico.html", request, conn,
+            status_code=400, erro=f"Não foi possível importar: {e}", payload_texto=payload_texto,
+        )
 
-<pre id="resultado"></pre>
-
-<script>
-async function importar() {{
-  const resultado = document.getElementById('resultado');
-  resultado.textContent = 'Importando...';
-  try {{
-    const dados = JSON.parse(document.getElementById('payload').value);
-    dados.congregacao_id = parseInt(document.getElementById('congregacao_id').value, 10);
-    const r = await fetch('/api/automacao/importar-historico', {{
-      method: 'POST',
-      headers: {{'Content-Type': 'application/json', 'X-Api-Key': {json.dumps(config.AUTOMACAO_API_KEY)}}},
-      body: JSON.stringify(dados)
-    }});
-    const texto = await r.text();
-    resultado.textContent = r.status + '\\n\\n' + texto;
-  }} catch (e) {{
-    resultado.textContent = 'Erro: ' + e;
-  }}
-}}
-</script>
-</body></html>"""
+    return render(
+        "admin_importar_historico.html", request, conn,
+        relatorio_texto=importacao_historico.formatar_relatorio(relatorio),
+    )
 
 
 @router.post("/congregacoes/criar")

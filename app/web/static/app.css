@@ -164,10 +164,12 @@ form.inline { display: inline; }
 .form-box label:first-child { margin-top: 0; }
 .form-box input,
 .form-box select,
+.form-box textarea,
 input[type="text"],
 input[type="number"],
 input[type="date"],
-select {
+select,
+textarea {
     font-size: 0.95rem;
     padding: 8px 10px;
     margin-top: 4px;
@@ -177,11 +179,18 @@ select {
     color: var(--texto);
     min-height: 38px;
     width: 100%;
+    box-sizing: border-box;
+}
+textarea {
+    font-family: monospace;
+    font-size: 0.85rem;
 }
 .form-box input:focus,
 .form-box select:focus,
+.form-box textarea:focus,
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
     outline: none;
     border-color: var(--azul);
     box-shadow: 0 0 0 3px rgba(35, 74, 125, 0.2);

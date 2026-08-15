@@ -170,6 +170,11 @@ TRADUCOES: dict[str, dict[str, str]] = {
         "admin.erro_nao_bloqueie_a_si": "Você não pode bloquear a si mesmo.",
         "admin.erro_confirmacao": "O nome digitado não confere. A congregação não foi apagada.",
         "admin.erro_nome_vazio": "Informe o nome da congregação.",
+        "admin.importar_historico_titulo": "Importar histórico de designações",
+        "admin.importar_historico_subtitulo": "Cole um histórico de designações (formato JSON) para cadastrar pessoas, disponibilidades e fixos de uma só vez. Pode ser usado quantas vezes precisar — rodar de novo com o mesmo histórico não duplica nada.",
+        "admin.importar_historico_formato": "Formato esperado: {\"historico\": [[\"AAAA-MM\", \"slot_id\", [\"Nome 1\", \"Nome 2\"]], ...], \"genero\": {\"Nome 1\": \"F\", \"Nome 2\": \"M\"}}. Campos opcionais: genero_incerto, dirigentes_pool, vigencia_inicio_fixos (AAAA-MM-DD), mes_limite_inativos (AAAA-MM).",
+        "admin.importar_historico_botao": "Importar",
+        "admin.importar_historico_resultado": "Resultado da importação",
         # --- navegação -------------------------------------------------------
         "nav.escala": "Escala",
         "nav.pessoas": "Pessoas",
@@ -178,6 +183,7 @@ TRADUCOES: dict[str, dict[str, str]] = {
         "nav.dirigentes": "Dirigentes",
         "nav.bloqueios": "Bloqueios",
         "nav.configuracoes": "Configurações",
+        "nav.importar_historico": "Importar histórico",
 
         # --- termos comuns ---------------------------------------------------
         "comum.salvar": "Salvar",
