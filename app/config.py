@@ -132,6 +132,13 @@ SECRET_KEY = _env("SECRET_KEY")
 # automação fica desligada (nunca aberta por acidente sem chave).
 AUTOMACAO_API_KEY = _env("AUTOMACAO_API_KEY")
 
+# Autentica o cron job que reseta a congregação de demonstração
+# (ver app/services/demo_service.py). A Vercel manda esse valor sozinha no
+# header Authorization quando a variável está definida e há um cron
+# configurado em vercel.json -- não precisa (nem dá pra) mandar X-Api-Key
+# num cron nativo da Vercel.
+CRON_SECRET = _env("CRON_SECRET")
+
 SESSAO_COOKIE = "escala_sessao"
 SESSAO_DURACAO_DIAS = 30
 # Validade do código de 6 dígitos enviado por e-mail.

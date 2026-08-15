@@ -6,6 +6,8 @@ router separado, sem a dependência `exigir_acesso` que protege o resto.
 
 from __future__ import annotations
 
+import secrets
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 
@@ -14,6 +16,7 @@ from app.auth import repo, service
 from app.auth.deps import _conexao_do_request, exigir_sessao, sessao_atual
 from app.auth.models import SessaoAtual
 from app.auth.service import ResultadoLogin, ResultadoPedido, ResultadoSolicitacao
+from app.services import demo_service
 from app.web.render import COOKIE_IDIOMA, render
 
 router = APIRouter()
@@ -51,6 +54,48 @@ def pagina_entrar(
     if sessao is not None:
         return RedirectResponse(url="/", status_code=303)
     return render("entrar.html", request, conn, email=email, aviso=aviso, etapa="email")
+
+
+# === Demonstração ============================================================
+# Acesso sem login a uma congregação fictícia (40 pessoas, 10 casais), pra
+# mostrar o sistema funcionando sem precisar de código por e-mail. Reseta
+# periodicamente (ver app/services/demo_service.py e
+# POST /api/automacao/resetar-demo).
+
+@router.get("/demo")
+def entrar_demo(
+    request: Request,
+    conn=Depends(_conexao_do_request),
+    sessao=Depends(sessao_atual),
+):
+    if not config.MODO_WEB:
+        return RedirectResponse(url="/", status_code=303)
+    if sessao is not None:
+        # já logado (numa conta de verdade ou já na própria demo) -- não troca
+        # a sessão por baixo dos panos.
+        return RedirectResponse(url="/", status_code=303)
+
+    congregacao = demo_service.garantir_demo_congregacao(conn)
+    usuario = repo.obter_usuario_por_email(conn, demo_service.EMAIL_USUARIO_DEMO)
+
+    token = secrets.token_urlsafe(32)
+    repo.criar_sessao(
+        conn, service.hash_token_sessao(token), usuario.id, congregacao.id,
+        config.SESSAO_DURACAO_DIAS, request.headers.get("user-agent", ""),
+    )
+
+    resposta = RedirectResponse(url="/", status_code=303)
+    return _definir_cookie_sessao(resposta, token)
+
+
+@router.post("/demo/reiniciar")
+def reiniciar_demo(sessao=Depends(exigir_sessao)):
+    """Botão manual dentro da própria demo. Reseta AGORA em vez de esperar o
+    cron diário -- útil antes de mostrar o sistema pra alguém."""
+    if not sessao.congregacao or sessao.congregacao.slug != demo_service.SLUG_CONGREGACAO_DEMO:
+        return RedirectResponse(url="/", status_code=303)
+    demo_service.resetar_demo()
+    return RedirectResponse(url="/demo", status_code=303)
 
 
 @router.post("/entrar")

@@ -10,20 +10,44 @@ explicitamente no corpo — sem sessão não há congregação "atual" para infe
 
 from __future__ import annotations
 
+import hmac
 import logging
 import traceback
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app import config
 from app.auth import repo as auth_repo
 from app.auth.deps import exigir_api_key
 from app.db.connection import get_connection
-from app.services import importacao_historico
+from app.services import demo_service, importacao_historico
 
 logger = logging.getLogger("escala.automacao")
 
 router = APIRouter(prefix="/api/automacao", tags=["automacao"], dependencies=[Depends(exigir_api_key)])
+
+# Router separado (sem a guarda de X-Api-Key acima): o cron nativo da Vercel
+# só manda GET com o header Authorization dela mesma, não dá pra configurar
+# X-Api-Key num cron do vercel.json. `exigir_reset_demo` aceita qualquer um
+# dos dois jeitos de autenticar.
+router_cron = APIRouter(prefix="/api/automacao", tags=["automacao"])
+
+
+def exigir_reset_demo(request: Request) -> None:
+    x_api_key = request.headers.get("x-api-key")
+    if config.AUTOMACAO_API_KEY and x_api_key and hmac.compare_digest(x_api_key, config.AUTOMACAO_API_KEY):
+        return
+    autorizacao = request.headers.get("authorization", "")
+    if config.CRON_SECRET and hmac.compare_digest(autorizacao, f"Bearer {config.CRON_SECRET}"):
+        return
+    raise HTTPException(401, "Não autorizado.")
+
+
+@router_cron.get("/resetar-demo", dependencies=[Depends(exigir_reset_demo)])
+def resetar_demo_route():
+    demo_service.resetar_demo()
+    return {"ok": True}
 
 
 @router.get("/congregacoes")

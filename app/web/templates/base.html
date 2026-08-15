@@ -48,6 +48,17 @@
             {% endif %}
         </nav>
     </header>
+    {% if em_modo_demo %}
+    <div class="faixa-demo">
+        <span>{{ t('demo.faixa_texto') }}</span>
+        <div class="faixa-demo-acoes">
+            <form method="post" action="/demo/reiniciar" class="inline">
+                <button type="submit" class="secundario">{{ t('demo.reiniciar') }}</button>
+            </form>
+            <a href="/entrar">{{ t('demo.entrar_de_verdade') }}</a>
+        </div>
+    </div>
+    {% endif %}
     <main class="conteudo">
         {% if mensagem %}<div class="flash">{{ mensagem }}</div>{% endif %}
         {% block content %}{% endblock %}

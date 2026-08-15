@@ -94,6 +94,30 @@ p { margin: 8px 0; }
     display: block;
 }
 
+/* --- faixa do modo demonstração ------------------------------------------ */
+.faixa-demo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--amarelo-fundo);
+    border-bottom: 1px solid var(--amarelo-borda);
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+.faixa-demo-acoes {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.faixa-demo-acoes form.inline { margin: 0; }
+.faixa-demo-acoes button.secundario {
+    padding: 4px 12px;
+    font-size: 0.85rem;
+}
+.faixa-demo-acoes a { color: var(--azul-escuro); font-weight: 600; }
+
 /* --- avisos / mensagens ------------------------------------------------- */
 .flash {
     background: var(--verde-fundo);
