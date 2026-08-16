@@ -59,7 +59,8 @@
             <div class="acoes">
                 <a class="btn secundario" href="/pessoas/{{ p.id }}/editar">✏️ {{ t('comum.editar') }}</a>
                 {% if p.ativo %}
-                <form class="inline" method="post" action="/pessoas/{{ p.id }}/inativar" onsubmit="return confirm('{{ t('pessoas.confirmar_inativar', nome=p.nome) }}');">
+                <form class="inline" method="post" action="/pessoas/{{ p.id }}/inativar"
+                      data-confirmar="{{ t('pessoas.confirmar_inativar', nome=p.nome) }}">
                     <button class="perigo" type="submit">{{ t('comum.inativar') }}</button>
                 </form>
                 {% endif %}

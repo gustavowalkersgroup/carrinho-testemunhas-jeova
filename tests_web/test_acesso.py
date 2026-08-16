@@ -1,5 +1,7 @@
 """Login por e-mail, solicitação de acesso e aprovação."""
 
+import re
+
 from tests_web.conftest import codigo_de, criar_congregacao, dar_acesso, entrar
 
 from app.auth import repo
@@ -32,6 +34,30 @@ def test_super_admin_do_ambiente_entra_sem_ninguem_aprovar(cliente, caixa_de_ent
     with postgres.get_connection() as conn:
         usuario = repo.obter_usuario_por_email(conn, "chefe@exemplo.com")
         assert usuario is not None and usuario.super_admin
+
+
+def test_sem_provedor_o_codigo_do_super_admin_nao_aparece_na_resposta(cliente, caplog, monkeypatch):
+    """Bootstrap sem provedor de e-mail configurado: o código do super-admin
+    deve ir só pro log do servidor (visível a quem administra a Vercel), nunca
+    pra resposta HTTP -- quem pede o código pela tela pública `/entrar` não é
+    necessariamente o dono do e-mail."""
+    monkeypatch.setattr("app.config.RESEND_API_KEY", "")
+    monkeypatch.setattr("app.config.SMTP_HOST", "")
+    caplog.set_level("WARNING")
+
+    resposta = cliente.post("/entrar", data={"email": "chefe@exemplo.com"})
+    assert resposta.status_code == 200
+    assert "painel-atencao" in resposta.text  # avisa que o código foi pro log
+    assert "codigo-destaque" not in resposta.text  # marcação antiga que exibia o valor -- removida
+
+    achado = re.search(r"código de acesso é: (\d{6})", caplog.text)
+    assert achado, "o código deveria ter sido registrado no log"
+    codigo = achado.group(1)
+    assert codigo not in resposta.text  # o valor real nunca aparece na página
+
+    resposta = cliente.post("/entrar/codigo", data={"email": "chefe@exemplo.com", "codigo": codigo})
+    assert resposta.status_code == 303
+    assert cliente.cookies.get("escala_sessao")
 
 
 def test_codigo_errado_nao_cria_sessao(cliente, caixa_de_entrada):

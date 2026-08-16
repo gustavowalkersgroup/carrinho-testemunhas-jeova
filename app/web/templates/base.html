@@ -79,6 +79,19 @@
             }
             if (melhor) { melhor.setAttribute("aria-current", "page"); }
         })();
+
+        // Confirmação antes de enviar um formulário perigoso. O texto vem de
+        // um atributo `data-confirmar` (dado, lido via .dataset), nunca de
+        // string concatenada dentro de um onsubmit inline -- um valor com
+        // aspas ali quebraria pra fora do JS, porque o navegador decodifica
+        // entidades HTML do atributo ANTES de rodar o JS do evento inline.
+        document.querySelectorAll("form[data-confirmar]").forEach(function (form) {
+            form.addEventListener("submit", function (evento) {
+                if (!confirm(form.dataset.confirmar)) {
+                    evento.preventDefault();
+                }
+            });
+        });
     </script>
 </body>
 </html>

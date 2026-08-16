@@ -104,6 +104,25 @@ def test_web_ui_pagina_pessoas_renderiza(client):
     assert "Ana" in resp.text
 
 
+def test_pagina_pessoas_escapa_nome_no_confirm_de_inativar(client):
+    # nome pensado pra quebrar pra fora de um onsubmit="return confirm('...')"
+    # inline caso o valor volte a ser concatenado ali (o navegador decodifica
+    # entidades HTML do atributo ANTES de rodar o JS do evento, então um
+    # &#39; vira aspas de verdade bem a tempo de fechar a string do JS).
+    nome_malicioso = "x', fetch('/evil'), 'y"
+    pessoa_id = client.post("/api/pessoas", json={"nome": nome_malicioso, "genero": "F"}).json()["id"]
+
+    pagina = client.get("/pessoas")
+    assert pagina.status_code == 200
+    assert f"/pessoas/{pessoa_id}/inativar" in pagina.text
+    # a confirmação agora vem de um atributo de dado (lido via JS .dataset),
+    # nunca de dentro de um onsubmit inline
+    assert "data-confirmar=" in pagina.text
+    assert "onsubmit=\"return confirm(" not in pagina.text
+    # o valor problemático nunca aparece com aspas cruas no HTML
+    assert "fetch('/evil')" not in pagina.text
+
+
 def test_pagina_pessoas_filtra_por_nome_genero_status_conjuge_e_dirigente(client):
     ana = client.post("/api/pessoas", json={"nome": "Ana Beatriz", "genero": "F"}).json()["id"]
     bruno = client.post("/api/pessoas", json={"nome": "Bruno", "genero": "M", "pode_dirigir": True}).json()["id"]

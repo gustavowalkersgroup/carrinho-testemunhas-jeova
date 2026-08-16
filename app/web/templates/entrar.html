@@ -4,11 +4,10 @@
 {% block content %}
 {% if etapa == 'codigo' %}
 
-    {% if codigo_visivel %}
+    {% if via_log %}
     <div class="painel-atencao">
         <strong>{{ t('acesso.sem_provedor_titulo') }}</strong>
         <p>{{ t('acesso.sem_provedor_texto') }}</p>
-        <p class="codigo-destaque">{{ codigo_visivel }}</p>
     </div>
     {% endif %}
 

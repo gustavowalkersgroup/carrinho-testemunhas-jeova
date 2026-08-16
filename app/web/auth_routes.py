@@ -128,9 +128,10 @@ async def solicitar_codigo(
 
     return render(
         "entrar.html", request, conn, etapa="codigo", email=email,
-        # só vem preenchido na instalação ainda sem provedor de e-mail, e só
-        # para super-admin (ver auth/service.pedir_codigo)
-        codigo_visivel=pedido.codigo_visivel,
+        # só vem True na instalação ainda sem provedor de e-mail, e só para
+        # super-admin (ver auth/service.pedir_codigo) -- o CÓDIGO em si nunca
+        # volta pra tela, só no log do servidor.
+        via_log=pedido.via_log,
     )
 
 
