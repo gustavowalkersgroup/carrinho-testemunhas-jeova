@@ -239,10 +239,45 @@ def exportar_pdf(ano: int, mes: int, conn=Depends(get_conn)):
 # --- pessoas ----------------------------------------------------------------
 
 @router.get("/pessoas")
-def pagina_pessoas(request: Request, conn=Depends(get_conn)):
-    pessoas = pessoas_repo.listar(conn)
-    nomes_por_id = {p.id: p.nome for p in pessoas}
-    return render("pessoas.html", request, conn, pessoas=pessoas, nomes_por_id=nomes_por_id)
+def pagina_pessoas(
+    request: Request,
+    conn=Depends(get_conn),
+    q: str = "",
+    genero: str = "",
+    status: str = "",
+    conjuge: str = "",
+    dirigente: str = "",
+):
+    todas = pessoas_repo.listar(conn)
+    # nomes_por_id vem da lista INTEIRA (antes dos filtros): o cônjuge de uma
+    # pessoa filtrada para fora da lista ainda precisa aparecer pelo nome.
+    nomes_por_id = {p.id: p.nome for p in todas}
+
+    pessoas = todas
+    termo = q.strip().lower()
+    if termo:
+        pessoas = [p for p in pessoas if termo in p.nome.lower()]
+    if genero in ("M", "F"):
+        pessoas = [p for p in pessoas if p.genero.value == genero]
+    if status == "ativos":
+        pessoas = [p for p in pessoas if p.ativo]
+    elif status == "inativos":
+        pessoas = [p for p in pessoas if not p.ativo]
+    if conjuge == "com":
+        pessoas = [p for p in pessoas if p.conjuge_id]
+    elif conjuge == "sem":
+        pessoas = [p for p in pessoas if not p.conjuge_id]
+    if dirigente == "sim":
+        pessoas = [p for p in pessoas if p.pode_dirigir]
+    elif dirigente == "nao":
+        pessoas = [p for p in pessoas if not p.pode_dirigir]
+
+    return render(
+        "pessoas.html", request, conn,
+        pessoas=pessoas, nomes_por_id=nomes_por_id,
+        filtro_q=q, filtro_genero=genero, filtro_status=status,
+        filtro_conjuge=conjuge, filtro_dirigente=dirigente,
+    )
 
 
 @router.post("/pessoas")
@@ -255,6 +290,29 @@ async def criar_pessoa(request: Request, conn=Depends(get_conn)):
     return RedirectResponse(url="/pessoas", status_code=303)
 
 
+def _contexto_editar_pessoa(conn, pessoa):
+    genero_oposto = "F" if pessoa.genero.value == "M" else "M"
+    # Um cônjuge por pessoa (ver cadastro_service.definir_conjuge): quem já
+    # está casado com OUTRA pessoa some da lista, senão o formulário deixaria
+    # escolher alguém já vinculado e "roubaria" o cônjuge dele sem aviso. O
+    # próprio cônjuge atual de `pessoa` continua aparecendo (senão a seleção
+    # já feita sumiria da combobox).
+    pessoas_conjuge = [
+        p for p in pessoas_repo.listar(conn)
+        if p.id != pessoa.id
+        and p.genero.value == genero_oposto
+        and (p.conjuge_id is None or p.conjuge_id == pessoa.id)
+    ]
+    idioma = _idioma_atual(conn)
+    slots = _slots_ordenados(conn)
+    slots_selecionados = set(disponibilidades_repo.listar_slots_da_pessoa(conn, pessoa.id))
+    return dict(
+        pessoa=pessoa, pessoas=pessoas_conjuge,
+        slots=slots, slots_selecionados=slots_selecionados,
+        slot_label=lambda s: _slot_label(s, idioma),
+    )
+
+
 @router.get("/pessoas/{pessoa_id}/editar")
 def editar_pessoa_form(pessoa_id: int, request: Request, conn=Depends(get_conn)):
     pessoa = pessoas_repo.obter(conn, pessoa_id)
@@ -263,24 +321,53 @@ def editar_pessoa_form(pessoa_id: int, request: Request, conn=Depends(get_conn))
         # para esta sessão simplesmente não existe. Nos dois casos é 404, nunca
         # um 500 que confirmaria que aquele id existe em algum lugar.
         raise HTTPException(status_code=404, detail="Pessoa não encontrada.")
-    genero_oposto = "F" if pessoa.genero.value == "M" else "M"
-    pessoas_conjuge = [
-        p for p in pessoas_repo.listar(conn)
-        if p.id != pessoa_id and p.genero.value == genero_oposto
-    ]
-    return render("pessoa_editar.html", request, conn, pessoa=pessoa, pessoas=pessoas_conjuge)
+    return render("pessoa_editar.html", request, conn, **_contexto_editar_pessoa(conn, pessoa))
 
 
 @router.post("/pessoas/{pessoa_id}/editar")
 async def editar_pessoa(pessoa_id: int, request: Request, conn=Depends(get_conn)):
+    pessoa_atual = pessoas_repo.obter(conn, pessoa_id)
+    if pessoa_atual is None:
+        raise HTTPException(status_code=404, detail="Pessoa não encontrada.")
     form = await request.form()
     pessoas_repo.atualizar(conn, pessoa_id, PessoaIn(
         nome=_campo(form, "nome"), genero=_campo(form, "genero"), ativo="ativo" in form,
         telefone=form.get("telefone") or None, observacoes=form.get("observacoes") or None,
         pode_dirigir="pode_dirigir" in form,
+        # Preserva o cônjuge atual aqui: só cadastro_service.definir_conjuge
+        # (logo abaixo) pode mudar esse campo. Se este UPDATE já zerasse
+        # conjuge_id (o padrão de PessoaIn), definir_conjuge encontraria a
+        # pessoa já "solteira" e nunca desfaria o vínculo recíproco do
+        # parceiro antigo, deixando um lado do casal preso a alguém que já
+        # trocou de cônjuge.
+        conjuge_id=pessoa_atual.conjuge_id,
     ))
-    conjuge_id = _campo_int_opcional(form, "conjuge_id")
-    cadastro_service.definir_conjuge(conn, pessoa_id, conjuge_id)
+
+    erro = None
+    try:
+        conjuge_id = _campo_int_opcional(form, "conjuge_id")
+        cadastro_service.definir_conjuge(conn, pessoa_id, conjuge_id)
+
+        # Disponibilidade fica junto do cadastro (publicador = pessoa): uma
+        # tela só, em vez de mandar o usuário para uma página separada de
+        # "escolha a pessoa de novo e marque os horários". A tela só oferece
+        # horários ATIVOS (_slots_ordenados filtra ativo=1) — preserva a
+        # disponibilidade de horários já desativados (que não aparecem para
+        # desmarcar/confirmar), senão qualquer edição não relacionada (ex.:
+        # corrigir telefone) apagaria esse histórico em silêncio.
+        marcados = set(form.getlist("slot_ids"))
+        ids_slots_ativos = {s.slot_id for s in _slots_ordenados(conn)}
+        preservados_inativos = set(disponibilidades_repo.listar_slots_da_pessoa(conn, pessoa_id)) - ids_slots_ativos
+        cadastro_service.definir_disponibilidade_pessoa(conn, pessoa_id, list(marcados | preservados_inativos))
+    except ValueError as e:
+        erro = str(e)
+
+    if erro:
+        pessoa = pessoas_repo.obter(conn, pessoa_id)
+        return render(
+            "pessoa_editar.html", request, conn, status_code=400, erro=erro,
+            **_contexto_editar_pessoa(conn, pessoa),
+        )
     return RedirectResponse(url="/pessoas", status_code=303)
 
 
@@ -288,31 +375,6 @@ async def editar_pessoa(pessoa_id: int, request: Request, conn=Depends(get_conn)
 def inativar_pessoa(pessoa_id: int, conn=Depends(get_conn)):
     pessoas_repo.inativar(conn, pessoa_id)
     return RedirectResponse(url="/pessoas", status_code=303)
-
-
-# --- disponibilidade ---------------------------------------------------------
-
-@router.get("/disponibilidade")
-def pagina_disponibilidade(request: Request, pessoa_id: int | None = None, conn=Depends(get_conn)):
-    idioma = _idioma_atual(conn)
-    pessoas = pessoas_repo.listar(conn, somente_ativos=True)
-    slots = _slots_ordenados(conn)
-    selecionados = set()
-    if pessoa_id:
-        selecionados = set(disponibilidades_repo.listar_slots_da_pessoa(conn, pessoa_id))
-    return render("disponibilidade.html", request, conn, idioma=idioma,
-        pessoas=pessoas, slots=slots, pessoa_id=pessoa_id, selecionados=selecionados,
-        slot_label=lambda s: _slot_label(s, idioma),
-    )
-
-
-@router.post("/disponibilidade")
-async def salvar_disponibilidade(request: Request, conn=Depends(get_conn)):
-    form = await request.form()
-    pessoa_id = _campo_int(form, "pessoa_id")
-    slot_ids = form.getlist("slot_ids")
-    cadastro_service.definir_disponibilidade_pessoa(conn, pessoa_id, slot_ids)
-    return RedirectResponse(url=f"/disponibilidade?pessoa_id={pessoa_id}", status_code=303)
 
 
 # --- fixos --------------------------------------------------------------

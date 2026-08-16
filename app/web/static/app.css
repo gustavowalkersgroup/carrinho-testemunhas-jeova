@@ -230,6 +230,33 @@ input[type="checkbox"] {
     margin-right: 4px;
 }
 
+/* --- barra de filtros (listas, ex.: Pessoas) ----------------------------- */
+.filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    align-items: flex-end;
+    background: white;
+    padding: 14px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    box-shadow: var(--sombra);
+    max-width: none;
+}
+.filtros label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--texto-suave);
+    gap: 4px;
+    flex: 1 1 160px;
+    min-width: 140px;
+}
+.filtros input,
+.filtros select { margin-top: 0; }
+.acoes-filtro { display: flex; gap: 8px; flex: 0 0 auto; }
+
 /* --- botões ------------------------------------------------------------- */
 button, .btn {
     background: var(--azul);
@@ -350,6 +377,10 @@ td .btn, td button { padding: 6px 12px; min-height: 32px; font-size: 0.86rem; }
         width: 38%; font-weight: 700; color: var(--texto-suave);
     }
     tbody tr:nth-child(even) td, table tr:nth-child(even) td { background: white; }
+    /* linha de mensagem (ex.: "nenhum resultado"): sem rótulo de coluna, texto
+       ocupando a largura toda em vez do recuo de 42% do valor de uma célula */
+    td.celula-mensagem { padding: 12px 10px; }
+    td.celula-mensagem::before { content: none; }
 }
 
 /* ==========================================================================

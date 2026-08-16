@@ -104,6 +104,149 @@ def test_web_ui_pagina_pessoas_renderiza(client):
     assert "Ana" in resp.text
 
 
+def test_pagina_pessoas_filtra_por_nome_genero_status_conjuge_e_dirigente(client):
+    ana = client.post("/api/pessoas", json={"nome": "Ana Beatriz", "genero": "F"}).json()["id"]
+    bruno = client.post("/api/pessoas", json={"nome": "Bruno", "genero": "M", "pode_dirigir": True}).json()["id"]
+    carla = client.post("/api/pessoas", json={"nome": "Carla", "genero": "F"}).json()["id"]
+
+    # checa pela presença do link de edição de cada um, não do nome cru: o
+    # nome de uma pessoa aparece na linha de OUTRA como cônjuge dela, então
+    # procurar a string do nome solto dá falso positivo/negativo.
+    def _presentes(pagina):
+        return {
+            pid: f"/pessoas/{pid}/editar" in pagina.text
+            for pid in (ana, bruno, carla)
+        }
+
+    client.post(f"/pessoas/{bruno}/editar", data={
+        "nome": "Bruno", "genero": "M", "ativo": "on", "pode_dirigir": "on", "conjuge_id": str(ana),
+    })
+    client.post(f"/pessoas/{carla}/inativar")
+
+    presentes = _presentes(client.get("/pessoas", params={"q": "ana"}))
+    assert presentes[ana] and not presentes[bruno] and not presentes[carla]
+
+    presentes = _presentes(client.get("/pessoas", params={"genero": "M"}))
+    assert presentes[bruno] and not presentes[ana]
+
+    presentes = _presentes(client.get("/pessoas", params={"status": "inativos"}))
+    assert presentes[carla] and not presentes[ana] and not presentes[bruno]
+
+    presentes = _presentes(client.get("/pessoas", params={"conjuge": "com"}))
+    assert presentes[ana] and presentes[bruno] and not presentes[carla]
+
+    presentes = _presentes(client.get("/pessoas", params={"conjuge": "sem"}))
+    assert presentes[carla] and not presentes[ana] and not presentes[bruno]
+
+    presentes = _presentes(client.get("/pessoas", params={"dirigente": "sim"}))
+    assert presentes[bruno] and not presentes[ana]
+
+    pagina = client.get("/pessoas", params={"q": "zzz-inexistente"})
+    assert "Nenhuma pessoa encontrada" in pagina.text
+
+
+def test_editar_pessoa_esconde_conjuge_ja_comprometido_mas_mantem_o_proprio(client):
+    # cada pessoa so pode ter UM conjuge (ver cadastro_service.definir_conjuge):
+    # a combobox de edicao precisa esconder quem ja esta casado com OUTRA
+    # pessoa, senao o admin escolheria alguem comprometido sem perceber que
+    # isso desfaz o casamento anterior dessa pessoa.
+    a = client.post("/api/pessoas", json={"nome": "Adelson", "genero": "M"}).json()["id"]
+    b = client.post("/api/pessoas", json={"nome": "Cassilda", "genero": "F"}).json()["id"]
+    c = client.post("/api/pessoas", json={"nome": "Berenice", "genero": "F"}).json()["id"]
+    d = client.post("/api/pessoas", json={"nome": "Eduardo", "genero": "M"}).json()["id"]
+
+    resp = client.post(f"/pessoas/{a}/editar", data={
+        "nome": "Adelson", "genero": "M", "ativo": "on", "conjuge_id": str(b),
+    })
+    assert resp.status_code == 200
+
+    # Eduardo nao pode "roubar" a Cassilda de Adelson pela combobox, mas
+    # Berenice (solteira) continua disponivel
+    form_eduardo = client.get(f"/pessoas/{d}/editar")
+    assert "Cassilda" not in form_eduardo.text
+    assert "Berenice" in form_eduardo.text
+
+    # a propria tela do Adelson continua oferecendo Cassilda (o conjuge atual dele)
+    form_adelson = client.get(f"/pessoas/{a}/editar")
+    assert "Cassilda" in form_adelson.text
+
+
+def test_editar_pessoa_salva_disponibilidade_junto_com_o_cadastro(client):
+    # disponibilidade agora fica na propria tela de cadastro do publicador
+    # (pessoa), em vez de uma pagina separada com um seletor de pessoa.
+    pessoa_id = client.post("/api/pessoas", json={"nome": "Fatima", "genero": "F"}).json()["id"]
+
+    form = client.get(f"/pessoas/{pessoa_id}/editar")
+    assert form.status_code == 200
+    assert "QUA_CONDOMINIO" in form.text or "Quarta" in form.text
+
+    resp = client.post(f"/pessoas/{pessoa_id}/editar", data={
+        "nome": "Fatima", "genero": "F", "ativo": "on",
+        "slot_ids": ["SEG_TARDE_ZARGON", "QUA_CONDOMINIO"],
+    })
+    assert resp.status_code == 200
+    disponibilidade = client.get(f"/api/disponibilidades/pessoa/{pessoa_id}").json()
+    assert set(disponibilidade) == {"SEG_TARDE_ZARGON", "QUA_CONDOMINIO"}
+
+    # desmarcar um horario na mesma tela remove só aquele
+    client.post(f"/pessoas/{pessoa_id}/editar", data={
+        "nome": "Fatima", "genero": "F", "ativo": "on",
+        "slot_ids": ["QUA_CONDOMINIO"],
+    })
+    assert client.get(f"/api/disponibilidades/pessoa/{pessoa_id}").json() == ["QUA_CONDOMINIO"]
+
+
+def test_trocar_conjuge_pela_tela_de_edicao_libera_o_parceiro_antigo(client):
+    # bug: pessoas_repo.atualizar() zerava conjuge_id ANTES de
+    # cadastro_service.definir_conjuge rodar, entao o servico nunca via quem
+    # era o parceiro antigo pra desfazer o vinculo reciproco dele.
+    a = client.post("/api/pessoas", json={"nome": "Adelson", "genero": "M"}).json()["id"]
+    b = client.post("/api/pessoas", json={"nome": "Cassilda", "genero": "F"}).json()["id"]
+    c = client.post("/api/pessoas", json={"nome": "Debora", "genero": "F"}).json()["id"]
+
+    client.post(f"/pessoas/{a}/editar", data={"nome": "Adelson", "genero": "M", "ativo": "on", "conjuge_id": str(b)})
+    client.post(f"/pessoas/{a}/editar", data={"nome": "Adelson", "genero": "M", "ativo": "on", "conjuge_id": str(c)})
+
+    pessoas = {p["id"]: p for p in client.get("/api/pessoas").json()}
+    assert pessoas[a]["conjuge_id"] == c
+    assert pessoas[c]["conjuge_id"] == a
+    assert pessoas[b]["conjuge_id"] is None
+
+
+def test_editar_pessoa_preserva_disponibilidade_de_slot_ja_desativado(client):
+    # bug: como a combobox so mostra horarios ATIVOS, qualquer edicao (mesmo
+    # sem relacao com disponibilidade) reenviava só os horarios visiveis e
+    # apagava em silencio a disponibilidade de um horario ja desativado.
+    pessoa_id = client.post("/api/pessoas", json={"nome": "Marta", "genero": "F"}).json()["id"]
+    client.post(f"/pessoas/{pessoa_id}/editar", data={
+        "nome": "Marta", "genero": "F", "ativo": "on", "slot_ids": ["QUA_CONDOMINIO"],
+    })
+    assert client.get(f"/api/disponibilidades/pessoa/{pessoa_id}").json() == ["QUA_CONDOMINIO"]
+
+    slot = next(s for s in client.get("/api/slots").json() if s["slot_id"] == "QUA_CONDOMINIO")
+    resp = client.post(f"/slots/{slot['slot_id']}/editar", data={
+        "dia_semana": slot["dia_semana"], "periodo": slot["periodo"],
+        "local": slot["local"], "ordem": str(slot["ordem"]),
+        # sem "ativo": desativa o horario
+    })
+    assert resp.status_code == 200
+
+    # edita um campo sem nenhuma relacao com disponibilidade; a combobox nem
+    # mostra mais QUA_CONDOMINIO como opcao
+    client.post(f"/pessoas/{pessoa_id}/editar", data={"nome": "Marta Souza", "genero": "F", "ativo": "on"})
+
+    assert client.get(f"/api/disponibilidades/pessoa/{pessoa_id}").json() == ["QUA_CONDOMINIO"]
+
+
+def test_editar_pessoa_com_slot_inexistente_mostra_erro_em_vez_de_500(client):
+    pessoa_id = client.post("/api/pessoas", json={"nome": "Julia", "genero": "F"}).json()["id"]
+    resp = client.post(f"/pessoas/{pessoa_id}/editar", data={
+        "nome": "Julia", "genero": "F", "ativo": "on", "slot_ids": ["SLOT_FANTASMA"],
+    })
+    assert resp.status_code == 400
+    assert "painel-erro" in resp.text
+
+
 def test_fixo_de_dupla_em_genero_misto_e_permitido(client):
     # exceção deliberada: um fixo é uma decisão explícita do administrador
     # (ex.: casal que sempre serve junto), diferente do sorteio aleatório,
