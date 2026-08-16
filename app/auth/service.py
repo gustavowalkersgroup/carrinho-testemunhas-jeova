@@ -83,10 +83,11 @@ class ResultadoPedido(str, Enum):
 @dataclass
 class Pedido:
     resultado: ResultadoPedido
-    # preenchido só quando o código foi "enviado" via log (instalação ainda
-    # sem provedor de e-mail, endereço de super-admin) — a rota mostra na tela
-    # para destravar o primeiro acesso.
-    codigo_visivel: Optional[str] = None
+    # True só quando o código foi "enviado" via log (instalação ainda sem
+    # provedor de e-mail, endereço de super-admin) -- avisa a rota a mostrar
+    # "veja o código no log da função", NUNCA o valor do código em si: quem
+    # pede o código pela tela pública não é necessariamente o dono do e-mail.
+    via_log: bool = False
     detalhe: str = ""
 
 
@@ -124,7 +125,7 @@ def pedir_codigo(conn, email: str, user_agent: str = "") -> Pedido:
         return Pedido(ResultadoPedido.FALHA_NO_ENVIO, detalhe=str(e))
 
     if via == "log":
-        return Pedido(ResultadoPedido.ENVIADO, codigo_visivel=codigo)
+        return Pedido(ResultadoPedido.ENVIADO, via_log=True)
     return Pedido(ResultadoPedido.ENVIADO)
 
 

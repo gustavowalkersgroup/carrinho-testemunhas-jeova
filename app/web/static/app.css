@@ -419,14 +419,6 @@ td .btn, td button { padding: 6px 12px; min-height: 32px; font-size: 0.86rem; }
     text-align: center;
     font-variant-numeric: tabular-nums;
 }
-.codigo-destaque {
-    font-size: 2rem;
-    letter-spacing: 0.34em;
-    font-weight: 700;
-    text-align: center;
-    margin: 10px 0 2px;
-    font-variant-numeric: tabular-nums;
-}
 
 .rodape-idioma {
     margin-top: 22px;
