@@ -2,8 +2,51 @@
 {% block title %}{{ t('pessoas.titulo') }}{% endblock %}
 {% block content %}
 <h1>{{ t('pessoas.titulo') }}</h1>
+
+<form class="filtros" method="get" action="/pessoas">
+    <label>{{ t('pessoas.filtro_busca_label') }}
+        <input type="text" name="q" value="{{ filtro_q }}" placeholder="{{ t('pessoas.filtro_busca_placeholder') }}">
+    </label>
+    <label>{{ t('comum.genero') }}
+        <select name="genero">
+            <option value="" {% if not filtro_genero %}selected{% endif %}>{{ t('pessoas.filtro_todos') }}</option>
+            <option value="F" {% if filtro_genero == "F" %}selected{% endif %}>{{ t('genero.f') }}</option>
+            <option value="M" {% if filtro_genero == "M" %}selected{% endif %}>{{ t('genero.m') }}</option>
+        </select>
+    </label>
+    <label>{{ t('pessoas.filtro_status_label') }}
+        <select name="status">
+            <option value="" {% if not filtro_status %}selected{% endif %}>{{ t('pessoas.filtro_todos') }}</option>
+            <option value="ativos" {% if filtro_status == "ativos" %}selected{% endif %}>{{ t('pessoas.filtro_ativos') }}</option>
+            <option value="inativos" {% if filtro_status == "inativos" %}selected{% endif %}>{{ t('pessoas.filtro_inativos') }}</option>
+        </select>
+    </label>
+    <label>{{ t('pessoas.col_conjuge') }}
+        <select name="conjuge">
+            <option value="" {% if not filtro_conjuge %}selected{% endif %}>{{ t('pessoas.filtro_todos') }}</option>
+            <option value="com" {% if filtro_conjuge == "com" %}selected{% endif %}>{{ t('pessoas.filtro_com_conjuge') }}</option>
+            <option value="sem" {% if filtro_conjuge == "sem" %}selected{% endif %}>{{ t('pessoas.filtro_sem_conjuge') }}</option>
+        </select>
+    </label>
+    <label>{{ t('pessoa_editar.pode_dirigir') }}
+        <select name="dirigente">
+            <option value="" {% if not filtro_dirigente %}selected{% endif %}>{{ t('pessoas.filtro_todos') }}</option>
+            <option value="sim" {% if filtro_dirigente == "sim" %}selected{% endif %}>{{ t('comum.sim') }}</option>
+            <option value="nao" {% if filtro_dirigente == "nao" %}selected{% endif %}>{{ t('comum.nao') }}</option>
+        </select>
+    </label>
+    <div class="acoes-filtro">
+        <button type="submit">{{ t('pessoas.filtro_aplicar') }}</button>
+        <a class="btn secundario" href="/pessoas">{{ t('pessoas.filtro_limpar') }}</a>
+    </div>
+</form>
+
 <table>
-    <tr><th>{{ t('comum.nome') }}</th><th>{{ t('comum.genero') }}</th><th>{{ t('comum.ativo') }}</th><th>{{ t('comum.telefone') }}</th><th>{{ t('pessoas.col_conjuge') }}</th><th></th></tr>
+    <tr>
+        <th>{{ t('comum.nome') }}</th><th>{{ t('comum.genero') }}</th><th>{{ t('comum.ativo') }}</th>
+        <th>{{ t('comum.telefone') }}</th><th>{{ t('pessoas.col_conjuge') }}</th>
+        <th>{{ t('pessoa_editar.pode_dirigir') }}</th><th></th>
+    </tr>
     {% for p in pessoas %}
     <tr>
         <td data-label="{{ t('comum.nome') }}">{{ p.nome }}</td>
@@ -11,6 +54,7 @@
         <td data-label="{{ t('comum.ativo') }}">{{ t('comum.sim') if p.ativo else t('comum.nao') }}</td>
         <td data-label="{{ t('comum.telefone') }}">{{ p.telefone or "" }}</td>
         <td data-label="{{ t('pessoas.col_conjuge') }}">{{ nomes_por_id[p.conjuge_id] if p.conjuge_id and p.conjuge_id in nomes_por_id else "" }}</td>
+        <td data-label="{{ t('pessoa_editar.pode_dirigir') }}">{{ t('comum.sim') if p.pode_dirigir else t('comum.nao') }}</td>
         <td data-label="{{ t('comum.acoes') }}">
             <div class="acoes">
                 <a class="btn secundario" href="/pessoas/{{ p.id }}/editar">✏️ {{ t('comum.editar') }}</a>
@@ -22,6 +66,8 @@
             </div>
         </td>
     </tr>
+    {% else %}
+    <tr><td colspan="7" class="celula-mensagem">{{ t('pessoas.nenhum_resultado') }}</td></tr>
     {% endfor %}
 </table>
 
